@@ -4,6 +4,11 @@ use eframe::egui;
 use chrono::NaiveDate;
 
 // App {{{
+//
+// description, day, month, year, values - variables to add / update records in sheets
+// sheets - array with sheets
+// active_sheet - variable with info on which sheet you currently are
+//
 // Definition {{{
 pub struct MyApp {
     pub description: String,
@@ -107,50 +112,6 @@ impl eframe::App for MyApp {
                 ui.vertical(|ui| {
                 // }}}
 
-                    // Display sheet's content {{{
-                    let mut remove_index = None;
-
-                    if !sheet.records.is_empty() {
-                        for index in 0..sheet.records.len() {
-                            let record = &mut sheet.records[index];
-                            ui.horizontal(|ui| {
-                                ui.label(&record.description);
-                                ui.label(record.date.format("%d.%m.%Y").to_string());
-                                ui.label(record.value_display());
-
-                                // Edit button {{{
-                                if ui.button("Edit").clicked() {
-                                    record.date = NaiveDate::from_ymd_opt(self.year, self.month, self.day).unwrap();
-                                    record.description = self.description.clone();
-                                    record.value = match self.value_zl.is_empty() {
-                                        false => (match self.value_zl.parse::<i64>() {
-                                            Ok(value) => value,
-                                            Err(_)    => 0,
-                                        }) * 100,
-                                        true  => 0,
-                                    } + match self.value_gr.is_empty() {
-                                        false => match self.value_gr.parse::<i64>() {
-                                            Ok(value) => value,
-                                            Err(_)    => 0,
-                                        },
-                                        true  => 0,
-                                    };
-                                }
-                                // }}}
-
-                                // Remove button {{{
-                                if ui.button("Remove").clicked() {
-                                    remove_index = Some(index);
-                                }
-                                // }}}
-                            });
-                        }
-                        if let Some(index) = remove_index {
-                            sheet.records.remove(index);
-                        }
-                    }
-                    // }}}
-
                     // Add content to sheet {{{
                     ui.horizontal(|ui| {
                         ui.vertical(|ui| {
@@ -219,6 +180,53 @@ impl eframe::App for MyApp {
                         sheet.records.push(record);
                     }
                     // }}}
+
+
+                    // Display sheet's content {{{
+                    ui.heading(&sheet.name);
+                    let mut remove_index = None;
+
+                    if !sheet.records.is_empty() {
+                        for index in 0..sheet.records.len() {
+                            let record = &mut sheet.records[index];
+                            ui.horizontal(|ui| {
+                                ui.label(&record.description);
+                                ui.label(record.date.format("%d.%m.%Y").to_string());
+                                ui.label(record.value_display());
+
+                                // Edit button {{{
+                                if ui.button("Edit").clicked() {
+                                    record.date = NaiveDate::from_ymd_opt(self.year, self.month, self.day).unwrap();
+                                    record.description = self.description.clone();
+                                    record.value = match self.value_zl.is_empty() {
+                                        false => (match self.value_zl.parse::<i64>() {
+                                            Ok(value) => value,
+                                            Err(_)    => 0,
+                                        }) * 100,
+                                        true  => 0,
+                                    } + match self.value_gr.is_empty() {
+                                        false => match self.value_gr.parse::<i64>() {
+                                            Ok(value) => value,
+                                            Err(_)    => 0,
+                                        },
+                                        true  => 0,
+                                    };
+                                }
+                                // }}}
+
+                                // Remove button {{{
+                                if ui.button("Remove").clicked() {
+                                    remove_index = Some(index);
+                                }
+                                // }}}
+                            });
+                        }
+                        if let Some(index) = remove_index {
+                            sheet.records.remove(index);
+                        }
+                    }
+                    // }}}
+
 
                 });
             });

@@ -1,6 +1,12 @@
 use chrono::Local;
 
 // Record {{{
+//
+// description - description of specific money flow
+// date - date of that money flow
+// value - value of that flow; i64 because computers have problem with calculating 
+// decimal fractions so to display it's just gonna be display value / 100
+//
 // Definition {{{
 pub struct Record {
     pub description: String,

@@ -1,6 +1,14 @@
 use crate::record::Record;
 
 // Sheet {{{
+//
+// name - name of sheet
+// records - list (Vec<Record>) with records to store informations about money flow
+// fraction - how much of your incomes you wanna commit to this type of money flow,
+// tho save as with Record::value it's i64 and just getting divided by 100 for 
+// calculations, so for example if for essential things you wanna spend up to 50%
+// of your income it's fraction 50 (50% = 50 (= fraction) / 100)
+//
 // Definition {{{
 pub struct Sheet {
     pub name: String,
