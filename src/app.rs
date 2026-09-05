@@ -1,7 +1,6 @@
 use crate::record::Record;
 use crate::sheet::Sheet;
 use eframe::egui;
-use chrono::NaiveDate;
 
 // App {{{
 //
@@ -160,23 +159,7 @@ impl eframe::App for MyApp {
 
                     // Add record button {{{
                     if ui.button("Add record").clicked() {
-                        let record = Record {
-                            date: NaiveDate::from_ymd_opt(self.year, self.month, self.day).unwrap(),
-                            description: self.description.clone(),
-                            value: match self.value_zl.is_empty() {
-                                false => (match self.value_zl.parse::<i64>() {
-                                    Ok(value) => value,
-                                    Err(_)    => 0,
-                                }) * 100,
-                                true  => 0,
-                            } + match self.value_gr.is_empty() {
-                                false => match self.value_gr.parse::<i64>() {
-                                    Ok(value) => value,
-                                    Err(_)    => 0,
-                                },
-                                true  => 0,
-                            }
-                        };
+                        let record = Record::from_input(&self.description, &self.year, &self.month, &self.day, &self.value_zl, &self.value_gr);
                         sheet.records.push(record);
                     }
                     // }}}
@@ -190,28 +173,15 @@ impl eframe::App for MyApp {
                         for index in 0..sheet.records.len() {
                             let record = &mut sheet.records[index];
                             ui.horizontal(|ui| {
-                                ui.label(&record.description);
-                                ui.label(record.date.format("%d.%m.%Y").to_string());
+                                ui.label(record.description());
+                                ui.label(record.date_display());
                                 ui.label(record.value_display());
 
                                 // Edit button {{{
                                 if ui.button("Edit").clicked() {
-                                    record.date = NaiveDate::from_ymd_opt(self.year, self.month, self.day).unwrap();
-                                    record.description = self.description.clone();
-                                    record.value = match self.value_zl.is_empty() {
-                                        false => (match self.value_zl.parse::<i64>() {
-                                            Ok(value) => value,
-                                            Err(_)    => 0,
-                                        }) * 100,
-                                        true  => 0,
-                                    } + match self.value_gr.is_empty() {
-                                        false => match self.value_gr.parse::<i64>() {
-                                            Ok(value) => value,
-                                            Err(_)    => 0,
-                                        },
-                                        true  => 0,
-                                    };
-                                }
+                                    record.date_set(&self.year, &self.month, &self.day);
+                                    record.description_set(&self.description);
+                                    record.value_set(&self.value_zl, &self.value_gr);                                }
                                 // }}}
 
                                 // Remove button {{{

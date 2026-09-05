@@ -1,6 +1,6 @@
 use crate::record::Record;
 
-// Sheet {{{
+// Sheet
 //
 // name - name of sheet
 // records - list (Vec<Record>) with records to store informations about money flow
@@ -8,16 +8,12 @@ use crate::record::Record;
 // tho save as with Record::value it's i64 and just getting divided by 100 for 
 // calculations, so for example if for essential things you wanna spend up to 50%
 // of your income it's fraction 50 (50% = 50 (= fraction) / 100)
-//
-// Definition {{{
+
 pub struct Sheet {
     pub name: String,
     pub records: Vec<Record>,
     pub fraction: i64,
 }
-// }}}
-
-// Initialization {{{
 impl Default for Sheet {
     fn default() -> Self {
         Self {
@@ -27,9 +23,6 @@ impl Default for Sheet {
         }
     }
 }
-// }}}
-
-// Sum{{{
 impl Sheet {
     pub fn sum(&self) -> i64 {
         let mut sum = 0;
@@ -42,5 +35,3 @@ impl Sheet {
         (self.sum() as f64 / 100.0).to_string()
     }
 }
-// }}}
-// }}}
