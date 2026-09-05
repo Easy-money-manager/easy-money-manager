@@ -1,6 +1,17 @@
 use chrono::Local;
 use chrono::NaiveDate;
 
+#[derive(Debug)]
+pub enum RecordError {
+    EmptyDescription,
+    InvalidYear,
+    InvalidMonth,
+    InvalidDay,
+    InvalidValueZl,
+    InvalidValueGr,
+}
+
+
 // Record
 //
 // description - description of specific money flow
@@ -32,8 +43,23 @@ impl Clone for Record {
     }
 }
 impl Record {
-    pub fn from_input(description: &str, year: &i32, month: &u32, day: &u32, value_zl: &str, value_gr: &str) -> Self {
-        Self {
+    pub fn from_input(description: &str, year: &i32, month: &u32, day: &u32, value_zl: &str, value_gr: &str) -> Result<Self, RecordError> {
+        if description.trim().is_empty() {
+            return Err(RecordError::EmptyDescription);
+        }
+        if !(1900..=2100).contains(year) {
+            return Err(RecordError::InvalidYear);
+        }
+        if !(1..=12).contains(month) {
+            return Err(RecordError::InvalidMonth);
+        }
+        if *day < 1 ||
+            *day > 30 + ((*month % 2 != 0) ^ (*month > 7)) as u32 ||
+                2 == *month && *day > 28 + (*year % 4 == 0 && *year % 100 != 0 || year % 400 == 0) as u32 {
+            return Err(RecordError::InvalidDay);
+        }
+        // add value checker
+        Ok(Self {
             description: description.to_string(),
             date: NaiveDate::from_ymd_opt(*year, *month, *day).unwrap(),
             value: match value_zl.is_empty() {
@@ -49,7 +75,7 @@ impl Record {
                 },
                 true  => 0,
             }
-        }
+        })
     }
     pub fn description(&self) -> &str {
         &self.description

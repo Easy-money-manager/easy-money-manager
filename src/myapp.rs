@@ -98,7 +98,7 @@ impl eframe::App for MyApp {
                             if 0 == index {
                                 ui.label(sheet.sum_display());
                             } else {
-                                ui.label(((self.sheets[0].sum() * sheet.fraction / 100 - sheet.sum()) as f64 / 100.0).to_string());
+                                ui.label(sheet.balance_display(&self.sheets[0].sum()));
                             }
                         });
                     }
@@ -160,17 +160,16 @@ impl eframe::App for MyApp {
                     // Add record button {{{
                     if ui.button("Add record").clicked() {
                         let record = Record::from_input(&self.description, &self.year, &self.month, &self.day, &self.value_zl, &self.value_gr);
-                        sheet.records.push(record);
+                        sheet.push(record);
                     }
                     // }}}
-
 
                     // Display sheet's content {{{
                     ui.heading(&sheet.name);
                     let mut remove_index = None;
 
-                    if !sheet.records.is_empty() {
-                        for index in 0..sheet.records.len() {
+                    if !sheet.is_empty() {
+                        for index in 0..sheet.len() {
                             let record = &mut sheet.records[index];
                             ui.horizontal(|ui| {
                                 ui.label(record.description());
@@ -192,11 +191,10 @@ impl eframe::App for MyApp {
                             });
                         }
                         if let Some(index) = remove_index {
-                            sheet.records.remove(index);
+                            sheet.remove(index);
                         }
                     }
                     // }}}
-
 
                 });
             });

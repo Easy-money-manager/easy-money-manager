@@ -34,4 +34,22 @@ impl Sheet {
     pub fn sum_display(&self) -> String {
         (self.sum() as f64 / 100.0).to_string()
     }
+    pub fn push(&mut self, record: Record) {
+        self.records.push(record);
+    }
+    pub fn is_empty(&self) -> bool {
+        self.records.is_empty()
+    }
+    pub fn len(&self) -> usize {
+        self.records.len()
+    }
+    pub fn remove(&mut self, index: usize) {
+        self.records.remove(index);
+    }
+    pub fn balance(&self, incomes: &i64) -> i64 {
+        incomes * self.fraction / 100 - self.sum()
+    }
+    pub fn balance_display(&self, incomes: &i64) -> String {
+        (self.balance(incomes) as f64 / 100.0).to_string()
+    }
 }
