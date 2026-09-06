@@ -776,6 +776,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
 
 [[package]]
+name = "easy-money-manager"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "eframe",
+]
+
+[[package]]
 name = "ecolor"
 version = "0.33.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2574,14 +2582,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.4",
-]
-
-[[package]]
-name = "sheets"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "eframe",
 ]
 
 [[package]]

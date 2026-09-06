@@ -1,8 +1,11 @@
 [package]
-name = "sheets"
+name = "easy-money-manager"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 eframe = "0.33"
 chrono = "0.4"
+
+[target.x86_64-pc-windows-gnu]
+linker = "/usr/bin/x86_64-w64-mingw32-gcc"

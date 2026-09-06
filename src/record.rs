@@ -206,6 +206,35 @@ mod tests {
     }
     #[test]
     fn reject_bad_days() {
+        for year in 1900..=2200 {
+            for month in 1..=12{
+                for day in 1..=31 {
+                    let result = Record::from_input(
+                        "Nazwa",
+                        &year,
+                        &month,
+                        &day,
+                        "100",
+                        "50",
+                    );
+                    match month {
+                        1 => assert!(matches!(result, Ok(_record))),
+                        2 => if day <= 28 || day <= 29 && ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0) { assert!(matches!(result, Ok(_record))); } else { assert!(matches!(result, Err(RecordError::InvalidDay))); },
+                        3 => assert!(matches!(result, Ok(_record))),
+                        4 => if day <= 30 { assert!(matches!(result, Ok(_record))) } else { assert!(matches!(result, Err(RecordError::InvalidDay))); },
+                        5 => assert!(matches!(result, Ok(_record))),
+                        6 => if day <= 30 { assert!(matches!(result, Ok(_record))) } else { assert!(matches!(result, Err(RecordError::InvalidDay))); },
+                        7 => assert!(matches!(result, Ok(_record))),
+                        8 => assert!(matches!(result, Ok(_record))),
+                        9 => if day <= 30 { assert!(matches!(result, Ok(_record))) } else { assert!(matches!(result, Err(RecordError::InvalidDay))); },
+                        10 => assert!(matches!(result, Ok(_record))),
+                        11 => if day <= 30 { assert!(matches!(result, Ok(_record))) } else { assert!(matches!(result, Err(RecordError::InvalidDay))); },
+                        12 => assert!(matches!(result, Ok(_record))),
+                        _  => panic!("Shouldn't have reached this number anyway"),
+                    }
+                }
+            }
+        }
     }
     #[test]
     fn reject_invalid_value_zl() {
