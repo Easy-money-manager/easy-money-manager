@@ -1,4 +1,4 @@
-use crate::record::Record;
+use crate::record::{Record, RecordError};
 use crate::sheet::Sheet;
 use eframe::egui;
 
@@ -16,6 +16,7 @@ pub struct MyApp {
     pub year: i32,
     pub value_zl: String,
     pub value_gr: String,
+    pub error: Option<RecordError>,
 
     pub sheets: [Sheet; 5],
     pub active_sheet: usize,
@@ -32,6 +33,7 @@ impl Default for MyApp {
             year: 0,
             value_zl: String::new(),
             value_gr: String::new(),
+            error: None,
 
             sheets: [
                 Sheet {
@@ -159,8 +161,18 @@ impl eframe::App for MyApp {
 
                     // Add record button {{{
                     if ui.button("Add record").clicked() {
-                        let record = Record::from_input(&self.description, &self.year, &self.month, &self.day, &self.value_zl, &self.value_gr);
-                        sheet.push(record);
+                        match Record::from_input(&self.description, &self.year, &self.month, &self.day, &self.value_zl, &self.value_gr) {
+                            Ok(record) => {
+                                sheet.push(record);
+                                self.error = None;
+                            },
+                            Err(error) => {
+                                self.error = Some(error);
+                            },
+                        }
+                    }
+                    if let Some(error) = &self.error {
+                        ui.label(format!("Error: {:?}", error));
                     }
                     // }}}
 

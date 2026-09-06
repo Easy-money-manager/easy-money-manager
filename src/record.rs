@@ -1,5 +1,4 @@
-use chrono::Local;
-use chrono::NaiveDate;
+use chrono::{NaiveDate, Local};
 
 #[derive(Debug)]
 pub enum RecordError {
@@ -7,8 +6,18 @@ pub enum RecordError {
     InvalidYear,
     InvalidMonth,
     InvalidDay,
-    InvalidValueZl,
-    InvalidValueGr,
+    ValueError(ValueError),
+}
+
+#[derive(Debug)]
+pub enum ValueError {
+    InvalidZl,
+    InvalidGr,
+}
+impl From<ValueError> for RecordError {
+    fn from(error: ValueError) -> Self {
+        RecordError::ValueError(error)
+    }
 }
 
 
@@ -43,6 +52,15 @@ impl Clone for Record {
     }
 }
 impl Record {
+    pub fn parse_value(value_zl: &str, value_gr: &str) -> Result<i64, ValueError> {
+        let zl = if value_zl.is_empty() { 0 } else {
+            value_zl.parse::<i64>().map_err(|_| ValueError::InvalidZl)?
+        };
+        let gr = if value_gr.is_empty() { 0 } else {
+            value_gr.parse::<i64>().map_err(|_| ValueError::InvalidGr)?
+        };
+        Ok(zl * 100 + gr)
+    }
     pub fn from_input(description: &str, year: &i32, month: &u32, day: &u32, value_zl: &str, value_gr: &str) -> Result<Self, RecordError> {
         if description.trim().is_empty() {
             return Err(RecordError::EmptyDescription);
@@ -58,23 +76,10 @@ impl Record {
                 2 == *month && *day > 28 + (*year % 4 == 0 && *year % 100 != 0 || year % 400 == 0) as u32 {
             return Err(RecordError::InvalidDay);
         }
-        // add value checker
         Ok(Self {
             description: description.to_string(),
             date: NaiveDate::from_ymd_opt(*year, *month, *day).unwrap(),
-            value: match value_zl.is_empty() {
-                false => (match value_zl.parse::<i64>() {
-                    Ok(value) => value,
-                    Err(_)    => 0,
-                }) * 100,
-                true  => 0,
-            } + match value_gr.is_empty() {
-                false => match value_gr.parse::<i64>() {
-                    Ok(value) => value,
-                    Err(_)    => 0,
-                },
-                true  => 0,
-            }
+            value: Self::parse_value(value_zl, value_gr)?,
         })
     }
     pub fn description(&self) -> &str {
