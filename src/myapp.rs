@@ -111,58 +111,58 @@ impl eframe::App for MyApp {
 
                 ui.separator();
                 ui.vertical(|ui| {
-                // }}}
-
-                    // Add content to sheet {{{
-                    ui.horizontal(|ui| {
-                        ui.vertical(|ui| {
-                            ui.label("Name\t");
-                            ui.label("Date [d/m/y]:");
-                            ui.label("Value\t");
-                        });
-                        ui.vertical(|ui| {
-                            ui.text_edit_singleline(&mut self.description);
-
-                            // Date {{{
-                            ui.horizontal(|ui| {
-
-                                ui.add(
-                                    egui::DragValue::new(&mut self.day)
-                                    .range(1..=31)
-                                );
-
-                                ui.label("/");
-
-                                ui.add(
-                                    egui::DragValue::new(&mut self.month)
-                                    .range(1..=12)
-                                );
-
-                                ui.label("/");
-
-                                ui.add(
-                                    egui::DragValue::new(&mut self.year)
-                                    .range(1900..=2100)
-                                );
-                            });
-                            // }}}
-
-                            // Value {{{
-                            ui.horizontal(|ui| {
-                                ui.add(egui::TextEdit::singleline(&mut self.value_zl).desired_width(50.0));
-                                ui.label(".");
-                                ui.add(egui::TextEdit::singleline(&mut self.value_gr).desired_width(15.0));
-                            });
-                            // }}}
-
-                        });
-                    });
                     // }}}
 
-                    // Add record button {{{
-                    if ui.button("Add record").clicked() {
-                        match Record::from_input(&self.description, &self.year, &self.month, &self.day, &self.value_zl, &self.value_gr) {
-                            Ok(record) => {
+                    // Add content to sheet {{{
+                    egui::Grid::new("add_record_grid")
+                    .num_columns(2)
+                    .spacing([20.0, 8.0])
+                    .show(ui, |ui| {
+
+                        // Name {{{
+                        ui.label("Name");
+                        ui.text_edit_singleline(&mut self.description);
+                        ui.end_row();
+                        //}}}
+
+                        // Date {{{
+                        ui.label("Date [d/m/y]:");
+                        ui.horizontal(|ui| {
+                            ui.add(
+                                egui::DragValue::new(&mut self.day)
+                                .range(1..=31)
+                            );
+                            ui.label("/");
+                            ui.add(
+                                egui::DragValue::new(&mut self.month)
+                                .range(1..=12)
+                            );
+                            ui.label("/");
+                            ui.add(
+                                egui::DragValue::new(&mut self.year)
+                                .range(1900..=2100)
+                            );
+                        });
+                        ui.end_row();
+                        // }}}
+
+                        // Value {{{
+                        ui.label("Value\t");
+                        ui.horizontal(|ui| {
+                            ui.add(egui::TextEdit::singleline(&mut self.value_zl).desired_width(50.0));
+                            ui.label(".");
+                            ui.add(egui::TextEdit::singleline(&mut self.value_gr).desired_width(15.0));
+                        });
+                        ui.end_row();
+                        // }}}
+
+                    });
+                // }}}
+
+                // Add record button {{{
+                if ui.button("Add record").clicked() {
+                    match Record::from_input(&self.description, &self.year, &self.month, &self.day, &self.value_zl, &self.value_gr) {
+                        Ok(record) => {
                                 sheet.push(record);
                                 self.error_msg = String::new();
                             },
@@ -186,27 +186,35 @@ impl eframe::App for MyApp {
                     let mut remove_index = None;
 
                     if !sheet.is_empty() {
-                        for index in 0..sheet.len() {
-                            let record = &mut sheet.records[index];
-                            ui.horizontal(|ui| {
-                                ui.label(record.description());
-                                ui.label(record.date_display());
-                                ui.label(record.value_display());
+                        egui::Grid::new("display_sheet_content_grid")
+                            .num_columns(5)
+                            .spacing([15.0, 10.0])
+                            .show(ui, |ui| {
+                                ui.label("Name");
+                                ui.label("Date");
+                                ui.label("Value");
+                                ui.end_row();
+                                for index in 0..sheet.len() {
+                                    let record = &mut sheet.records[index];
+                                        ui.label(record.description());
+                                        ui.label(record.date_display());
+                                        ui.label(record.value_display());
 
-                                // Edit button {{{
-                                if ui.button("Edit").clicked() {
-                                    record.date_set(&self.year, &self.month, &self.day);
-                                    record.description_set(&self.description);
-                                    record.value_set(&self.value_zl, &self.value_gr);                                }
-                                // }}}
+                                        // Edit button {{{
+                                        if ui.button("Edit").clicked() {
+                                            record.date_set(&self.year, &self.month, &self.day);
+                                            record.description_set(&self.description);
+                                            record.value_set(&self.value_zl, &self.value_gr);                                }
+                                        // }}}
 
-                                // Remove button {{{
-                                if ui.button("Remove").clicked() {
-                                    remove_index = Some(index);
+                                        // Remove button {{{
+                                        if ui.button("Remove").clicked() {
+                                            remove_index = Some(index);
+                                        }
+                                        // }}}
+                                    ui.end_row();
                                 }
-                                // }}}
                             });
-                        }
                         if let Some(index) = remove_index {
                             sheet.remove(index);
                         }
