@@ -1,5 +1,10 @@
 use crate::record::Record;
 
+#[derive(Debug)]
+pub enum SheetError {
+    IndexOutOfBounds,
+}
+
 // Sheet
 //
 // name - name of sheet
@@ -43,13 +48,23 @@ impl Sheet {
     pub fn len(&self) -> usize {
         self.records.len()
     }
-    pub fn remove(&mut self, index: usize) {
+    pub fn remove(&mut self, index: usize) -> Result<(), SheetError> {
+        if index >= self.len() { return Err(SheetError::IndexOutOfBounds); }
         self.records.remove(index);
+        Ok(())
     }
     pub fn balance(&self, incomes: &i64) -> i64 {
         incomes * self.fraction / 100 - self.sum()
     }
     pub fn balance_display(&self, incomes: &i64) -> String {
         (self.balance(incomes) as f64 / 100.0).to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn push_test() {
+
     }
 }

@@ -1,5 +1,5 @@
 use crate::record::{Record, RecordError, ValueError};
-use crate::sheet::Sheet;
+use crate::sheet::{Sheet, SheetError};
 use eframe::egui;
 
 // App {{{
@@ -217,7 +217,10 @@ impl eframe::App for EasyMoneyManager {
                                 }
                             });
                         if let Some(index) = remove_index {
-                            sheet.remove(index);
+                            match sheet.remove(index) {
+                                Ok(()) => { },
+                                Err(SheetError::IndexOutOfBounds) => { ui.label("Something went wrong with removing last record, please contact support for support"); },
+                            }
                         }
                     }
                     // }}}
