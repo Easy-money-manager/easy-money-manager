@@ -13,6 +13,7 @@ pub enum RecordError {
 pub enum ValueError {
     InvalidZl,
     InvalidGr,
+    TooBigGr,
 }
 impl From<ValueError> for RecordError {
     fn from(error: ValueError) -> Self {
@@ -56,8 +57,10 @@ impl Record {
         let zl = if value_zl.is_empty() { 0 } else {
             value_zl.parse::<i64>().map_err(|_| ValueError::InvalidZl)?
         };
-        let gr = if value_gr.is_empty() { 0 } else {
-            value_gr.parse::<i64>().map_err(|_| ValueError::InvalidGr)?
+        let gr = match value_gr.len() {
+                0     => 0,
+                1..=2 => value_gr.parse::<i64>().map_err(|_| ValueError::InvalidGr)?,
+                _     => return Err(ValueError::TooBigGr),
         };
         Ok(zl * 100 + gr)
     }
@@ -111,5 +114,56 @@ impl Record {
             },
             true  => 0,
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reject_empty_description() {
+        let result = Record::from_input(
+            "",
+            &2026,
+            &9,
+            &6,
+            "100",
+            "50",
+        );
+        assert!(matches!(result, Err(RecordError::EmptyDescription)));
+    }
+    #[test]
+    fn reject_too_big_year() {
+    }
+    #[test]
+    fn reject_too_small_year() {
+    }
+    #[test]
+    fn reject_too_big_month() {
+    }
+    #[test]
+    fn reject_too_small_month() {
+    }
+    #[test]
+    fn reject_too_big_day() {
+    }
+    #[test]
+    fn reject_too_small_day() {
+    }
+    #[test]
+    fn reject_bad_days() {
+    }
+    #[test]
+    fn reject_invalid_value_zl() {
+    }
+    #[test]
+    fn reject_invlaid_value_gr() {
+    }
+    #[test]
+    fn reject_too_big_value_gr() {
+    }
+    #[test]
+    fn valid_input() {
     }
 }
