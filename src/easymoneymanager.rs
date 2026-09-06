@@ -9,7 +9,7 @@ use eframe::egui;
 // active_sheet - variable with info on which sheet you currently are
 //
 // Definition {{{
-pub struct MyApp {
+pub struct EasyMoneyManager {
     pub description: String,
     pub day: u32,
     pub month: u32,
@@ -24,7 +24,7 @@ pub struct MyApp {
 // }}}
 
 // Initialization {{{
-impl Default for MyApp {
+impl Default for EasyMoneyManager {
     fn default() -> Self {
         Self {
             description: String::new(),
@@ -69,7 +69,7 @@ impl Default for MyApp {
 // }}}
 // }}}
 
-impl MyApp {
+impl EasyMoneyManager {
     pub fn balance(&self) -> i64 {
         let mut balance: i64 = self.sheets[0].sum();
         for sheet in &self.sheets[1..=4] {
@@ -82,7 +82,7 @@ impl MyApp {
     }
 }
 
-impl eframe::App for MyApp {
+impl eframe::App for EasyMoneyManager {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame,) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("My sheets app");
