@@ -5,3 +5,6 @@ git clone https://gitlab.com/Evrandil/sheets
 cd sheets
 cargo run
 ```
+
+Todo:
+ - [ ] tests
