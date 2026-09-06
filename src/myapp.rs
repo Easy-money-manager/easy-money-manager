@@ -1,4 +1,4 @@
-use crate::record::{Record, RecordError};
+use crate::record::{Record, RecordError, ValueError};
 use crate::sheet::Sheet;
 use eframe::egui;
 
@@ -16,7 +16,7 @@ pub struct MyApp {
     pub year: i32,
     pub value_zl: String,
     pub value_gr: String,
-    pub error: Option<RecordError>,
+    pub error_msg: String,
 
     pub sheets: [Sheet; 5],
     pub active_sheet: usize,
@@ -33,7 +33,7 @@ impl Default for MyApp {
             year: 0,
             value_zl: String::new(),
             value_gr: String::new(),
-            error: None,
+            error_msg: String::new(),
 
             sheets: [
                 Sheet {
@@ -73,7 +73,7 @@ impl MyApp {
     pub fn balance(&self) -> i64 {
         let mut balance: i64 = self.sheets[0].sum();
         for sheet in &self.sheets[1..=4] {
-            balance -= sheet.sum();// * sheet.fraction / 100 - sheet.sum();
+            balance -= sheet.sum();
         }
         balance
     }
@@ -164,16 +164,21 @@ impl eframe::App for MyApp {
                         match Record::from_input(&self.description, &self.year, &self.month, &self.day, &self.value_zl, &self.value_gr) {
                             Ok(record) => {
                                 sheet.push(record);
-                                self.error = None;
+                                self.error_msg = String::new();
                             },
                             Err(error) => {
-                                self.error = Some(error);
+                                self.error_msg = match error {
+                                    RecordError::EmptyDescription => "Description can't be empty".to_string(),
+                                    RecordError::InvalidYear => "Year has to be integer between 1900 and 2200".to_string(),
+                                    RecordError::InvalidMonth => "Month has to be valid (integer between 1 and 12)".to_string(),
+                                    RecordError::InvalidDay => "Day has to be valid (integer that satysfies \"day > 0 && (((day < 30 + ((month % 2) ^ (month > 7))) && month != 2) || month == 2 && day < 28 + ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0))\")".to_string(),
+                                    RecordError::ValueError(ValueError::InvalidZl) => "There's some unwanted sign in value field".to_string(),
+                                    RecordError::ValueError(ValueError::InvalidGr) => "There's some unwanted sign in decimal value field".to_string(),
+                                };
                             },
                         }
                     }
-                    if let Some(error) = &self.error {
-                        ui.label(format!("Error: {:?}", error));
-                    }
+                    ui.label(&self.error_msg);
                     // }}}
 
                     // Display sheet's content {{{

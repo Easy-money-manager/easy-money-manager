@@ -65,7 +65,7 @@ impl Record {
         if description.trim().is_empty() {
             return Err(RecordError::EmptyDescription);
         }
-        if !(1900..=2100).contains(year) {
+        if !(1900..=2200).contains(year) {
             return Err(RecordError::InvalidYear);
         }
         if !(1..=12).contains(month) {
