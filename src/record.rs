@@ -11,8 +11,8 @@ pub enum RecordError {
 
 #[derive(Debug)]
 pub enum ValueError {
-    InvalidZl,
-    InvalidGr,
+    InvalidValueZl,
+    InvalidValueGr,
     TooBigGr,
 }
 impl From<ValueError> for RecordError {
@@ -55,13 +55,12 @@ impl Clone for Record {
 impl Record {
     pub fn parse_value(value_zl: &str, value_gr: &str) -> Result<i64, ValueError> {
         let zl = if value_zl.is_empty() { 0 } else {
-            value_zl.parse::<i64>().map_err(|_| ValueError::InvalidZl)?
+            value_zl.parse::<i64>().map_err(|_| ValueError::InvalidValueZl)?
         };
-        let gr = match value_gr.len() {
-                0     => 0,
-                1..=2 => value_gr.parse::<i64>().map_err(|_| ValueError::InvalidGr)?,
-                _     => return Err(ValueError::TooBigGr),
+        let gr = if value_gr.is_empty() { 0 } else {
+            value_gr.parse::<i64>().map_err(|_| ValueError::InvalidValueGr)?
         };
+        if gr.abs() >= 100 { return Err(ValueError::TooBigGr); }
         Ok(zl * 100 + gr)
     }
     pub fn from_input(description: &str, year: &i32, month: &u32, day: &u32, value_zl: &str, value_gr: &str) -> Result<Self, RecordError> {
@@ -135,35 +134,125 @@ mod tests {
     }
     #[test]
     fn reject_too_big_year() {
+        let result = Record::from_input(
+            "Nazwa",
+            &2226,
+            &9,
+            &6,
+            "100",
+            "50",
+        );
+        assert!(matches!(result, Err(RecordError::InvalidYear)));
     }
     #[test]
     fn reject_too_small_year() {
+        let result = Record::from_input(
+            "Nazwa",
+            &1826,
+            &9,
+            &6,
+            "100",
+            "50",
+        );
+        assert!(matches!(result, Err(RecordError::InvalidYear)));
     }
     #[test]
     fn reject_too_big_month() {
+        let result = Record::from_input(
+            "Nazwa",
+            &2026,
+            &19,
+            &6,
+            "100",
+            "50",
+        );
+        assert!(matches!(result, Err(RecordError::InvalidMonth)));
     }
     #[test]
     fn reject_too_small_month() {
+        let result = Record::from_input(
+            "Nazwa",
+            &2026,
+            &0,
+            &6,
+            "100",
+            "50",
+        );
+        assert!(matches!(result, Err(RecordError::InvalidMonth)));
     }
     #[test]
     fn reject_too_big_day() {
+        let result = Record::from_input(
+            "Nazwa",
+            &2026,
+            &9,
+            &36,
+            "100",
+            "50",
+        );
+        assert!(matches!(result, Err(RecordError::InvalidDay)));
     }
     #[test]
     fn reject_too_small_day() {
+        let result = Record::from_input(
+            "Nazwa",
+            &2026,
+            &9,
+            &0,
+            "100",
+            "50",
+        );
+        assert!(matches!(result, Err(RecordError::InvalidDay)));
     }
     #[test]
     fn reject_bad_days() {
     }
     #[test]
     fn reject_invalid_value_zl() {
+        let result = Record::from_input(
+            "Nazwa",
+            &2026,
+            &9,
+            &6,
+            "xyz",
+            "50",
+        );
+        assert!(matches!(result, Err(RecordError::ValueError(ValueError::InvalidValueZl))));
     }
     #[test]
     fn reject_invlaid_value_gr() {
+        let result = Record::from_input(
+            "Nazwa",
+            &2026,
+            &9,
+            &6,
+            "100",
+            "xyz",
+        );
+        assert!(matches!(result, Err(RecordError::ValueError(ValueError::InvalidValueGr))));
     }
     #[test]
     fn reject_too_big_value_gr() {
+        let result = Record::from_input(
+            "Nazwa",
+            &2026,
+            &9,
+            &6,
+            "100",
+            "100",
+        );
+        assert!(matches!(result, Err(RecordError::ValueError(ValueError::TooBigGr))));
     }
     #[test]
     fn valid_input() {
+        let result = Record::from_input(
+            "Nazwa",
+            &2026,
+            &9,
+            &6,
+            "100",
+            "50",
+        );
+        assert!(matches!(result, Ok(_record)));
     }
 }

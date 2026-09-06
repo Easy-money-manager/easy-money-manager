@@ -172,8 +172,8 @@ impl eframe::App for MyApp {
                                     RecordError::InvalidYear => "Year has to be integer between 1900 and 2200".to_string(),
                                     RecordError::InvalidMonth => "Month has to be valid (integer between 1 and 12)".to_string(),
                                     RecordError::InvalidDay => "Day has to be valid (integer that satysfies \"day > 0 && (((day < 30 + ((month % 2) ^ (month > 7))) && month != 2) || month == 2 && day < 28 + ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0))\")".to_string(),
-                                    RecordError::ValueError(ValueError::InvalidZl) => "There's some unwanted sign in value field".to_string(),
-                                    RecordError::ValueError(ValueError::InvalidGr) => "There's some unwanted sign in decimal value field".to_string(),
+                                    RecordError::ValueError(ValueError::InvalidValueZl) => "There's some unwanted sign in value field".to_string(),
+                                    RecordError::ValueError(ValueError::InvalidValueGr) => "There's some unwanted sign in decimal value field".to_string(),
                                     RecordError::ValueError(ValueError::TooBigGr)  => "Too big decimal value".to_string(),
                                 };
                             },

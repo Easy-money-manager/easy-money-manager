@@ -7,4 +7,4 @@ cargo run
 ```
 
 Todo:
- - [ ] tests
+ - [x] record unit tests
