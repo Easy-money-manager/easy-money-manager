@@ -29,6 +29,13 @@ impl Default for Sheet {
     }
 }
 impl Sheet {
+    pub fn create(&self, name: &str, fraction: i64) -> Self {
+        Self {
+            self.name: name,
+            self.fraction: fraction,
+            records: Vec::new(),
+        }
+    }
     pub fn sum(&self) -> i64 {
         let mut sum = 0;
         for record in &self.records {

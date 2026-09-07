@@ -1,8 +1,8 @@
 use crate::record::{Record, RecordError, ValueError};
-use crate::sheet::{Sheet, SheetError};
+use crate::sheet::/*{Sheet, */SheetError;//};
 use eframe::egui;
 
-// App {{{
+// EasyMoneyManager {{{
 //
 // description, day, month, year, values - variables to add / update records in sheets
 // sheets - array with sheets
@@ -18,7 +18,8 @@ pub struct EasyMoneyManager {
     pub value_gr: String,
     pub error_msg: String,
 
-    pub sheets: [Sheet; 5],
+    pub sheet_collections: [SheetCollection; 2],
+    pub active_collection: usize,
     pub active_sheet: usize,
 }
 // }}}
@@ -35,33 +36,26 @@ impl Default for EasyMoneyManager {
             value_gr: String::new(),
             error_msg: String::new(),
 
-            sheets: [
-                Sheet {
-                    name: "Incomes".to_string(),
-                    records: Vec::new(),
-                    fraction: 100,
-                },
-                Sheet {
-					name: "Essentials".to_string(),
-					records: Vec::new(),
-                    fraction: 50,
-				},
-                Sheet {
-					name: "Stability".to_string(),
-					records: Vec::new(),
-                    fraction: 15,
-				},
-                Sheet {
-					name: "Growth".to_string(),
-					records: Vec::new(),
-                    fraction: 25,
-				},
-                Sheet {
-					name: "Prizes".to_string(),
-					records: Vec::new(),
-                    fraction: 10,
-				},
-            ],
+            sheet_collections: [
+                SheetCollection {
+                    name: "Past",
+                    sheets: vec![
+                        Sheet::create("Incomes".to_str(), 100),
+                        Sheet::create("Essentials".to_str(), 50),
+                        Sheet::create("Stability".to_str(), 15),
+                        Sheet::create("Growth".to_str(), 25),
+                        Sheet::create("Prizes".to_str(), 10)
+                    ],
+                }
+                SheetCollection {
+                    name: "Future",
+                    sheets: vec![
+                        Sheet::create("Incomes".to_str(), 100),
+                        Sheet::create("Expenses".to_str(), 100),
+                    ],
+                }
+            ]
+            active_collection: 0,
             active_sheet: 0,
         }
     }
@@ -71,8 +65,8 @@ impl Default for EasyMoneyManager {
 
 impl EasyMoneyManager {
     pub fn balance(&self) -> i64 {
-        let mut balance: i64 = self.sheets[0].sum();
-        for sheet in &self.sheets[1..=4] {
+        let mut balance: i64 = self.sheet_collections[self.active_collection].sheets[0].sum();
+        for sheet in &self.sheet_collections[self.active_collection].sheets[1..&self.sheet_collections[self.active_collection]].sheets.len() {
             balance -= sheet.sum();
         }
         balance
@@ -92,7 +86,7 @@ impl eframe::App for EasyMoneyManager {
 
                 // Sheet choose and basic stats {{{
                 ui.vertical(|ui| {
-                    for (index, sheet) in self.sheets.iter().enumerate() {
+                    for (index, sheet) in self.sheet_collections[self.active_collection].sheets.iter().enumerate() {
                         ui.horizontal(|ui| {
                             if ui.button(&sheet.name).clicked() {
                                 self.active_sheet = index;
@@ -100,14 +94,14 @@ impl eframe::App for EasyMoneyManager {
                             if 0 == index {
                                 ui.label(sheet.sum_display());
                             } else {
-                                ui.label(sheet.balance_display(&self.sheets[0].sum()));
+                                ui.label(sheet.balance_display(&self.sheet_collections[self.active_collection].sheets[0].sum()));
                             }
                         });
                     }
                     ui.label(format!("Balance\t{}", self.balance_display()));
                 });
 
-                let sheet = &mut self.sheets[self.active_sheet];
+                let sheet = &mut self.sheet_collections[self.active_collection].sheets[self.active_sheet];
 
                 ui.separator();
                 ui.vertical(|ui| {
