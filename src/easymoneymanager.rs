@@ -1,6 +1,7 @@
 use crate::record::{ Record, RecordError, ValueError };
 use crate::sheet::/*{ Sheet,*/ SheetError;// };
 use crate::sheetcollection::{ SheetCollection };
+use crate::database::Database;
 use eframe::egui;
 
 // EasyMoneyManager {{{
@@ -22,6 +23,7 @@ pub struct EasyMoneyManager {
     pub sheet_collections: [SheetCollection; 2],
     pub active_collection: usize,
     pub active_sheet: usize,
+    pub database: Database,
 }
 // }}}
 
@@ -38,12 +40,14 @@ impl Default for EasyMoneyManager {
             error_msg: String::new(),
 
             sheet_collections: [
-                SheetCollection::create(&"Past".to_string()),
-                SheetCollection::create(&"Future".to_string()),
+                SheetCollection::create(&"Main".to_string()),
+                SheetCollection::create(&"Planning".to_string()),
             ],
             active_collection: 0,
             active_sheet: 0,
+            database: Database::new("easy_money_manager.db").expect("Failed to open database"),
         };
+        def.database.initialize().expect("Failed to initialize database");
         for (name, fraction) in [
             ("Incomes", 100),
             ("Essentials", 50),

@@ -2,7 +2,9 @@ mod easymoneymanager;
 mod record;
 mod sheet;
 mod sheetcollection;
+mod database;
 use easymoneymanager::EasyMoneyManager;
+
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
 
@@ -20,6 +22,7 @@ fn main() -> eframe::Result {
 #[cfg(target_arch = "wasm32")]
 fn main() -> eframe::Result {
     let options = eframe::WebOptions::default();
+
     wasm_bindgen_futures::spawn_local(async {
         let document = web_sys::window()
             .unwrap()

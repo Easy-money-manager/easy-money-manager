@@ -30,7 +30,7 @@ impl From<ValueError> for RecordError {
 // decimal fractions so to display it's just gonna be display value / 100
 
 pub struct Record {
-    pub id: Option<usize>,
+    pub id: Option<i64>,
     pub description: String,
     pub date: chrono::NaiveDate,
     pub value: i64,
@@ -88,7 +88,7 @@ impl Record {
             value: Self::parse_value(value_zl, value_gr)?,
         })
     }
-    pub fn id(&self) -> Option<usize> {
+    pub fn id(&self) -> Option<i64> {
         self.id
     }
     pub fn description(&self) -> &str {
