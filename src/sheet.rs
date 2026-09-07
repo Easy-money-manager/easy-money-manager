@@ -29,10 +29,10 @@ impl Default for Sheet {
     }
 }
 impl Sheet {
-    pub fn create(&self, name: &str, fraction: i64) -> Self {
+    pub fn create(name: &str, fraction: i64) -> Self {
         Self {
-            self.name: name,
-            self.fraction: fraction,
+            name: name.to_string(),
+            fraction: fraction,
             records: Vec::new(),
         }
     }

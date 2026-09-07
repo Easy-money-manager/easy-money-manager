@@ -1,6 +1,7 @@
 mod easymoneymanager;
 mod record;
 mod sheet;
+mod sheetcollection;
 use easymoneymanager::EasyMoneyManager;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;

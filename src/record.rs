@@ -30,6 +30,7 @@ impl From<ValueError> for RecordError {
 // decimal fractions so to display it's just gonna be display value / 100
 
 pub struct Record {
+    pub id: Option<usize>,
     pub description: String,
     pub date: chrono::NaiveDate,
     pub value: i64,
@@ -37,6 +38,7 @@ pub struct Record {
 impl Default for Record {
     fn default() -> Self {
         Self {
+            id: None,
             description: String::new(),
             date: Local::now().date_naive(),
             value: 0,
@@ -46,6 +48,7 @@ impl Default for Record {
 impl Clone for Record {
     fn clone(&self) -> Record {
         Record {
+            id: self.id,
             description: self.description.clone(),
             date: self.date.clone(),
             value: self.value.clone(),
@@ -75,14 +78,18 @@ impl Record {
         }
         if *day < 1 ||
             *day > 30 + ((*month % 2 != 0) ^ (*month > 7)) as u32 ||
-                2 == *month && *day > 28 + (*year % 4 == 0 && *year % 100 != 0 || year % 400 == 0) as u32 {
+                2 == *month && *day > 28 + (*year % 4 == 0 && *year % 100 != 0 || *year % 400 == 0) as u32 {
             return Err(RecordError::InvalidDay);
         }
         Ok(Self {
+            id: None,
             description: description.to_string(),
             date: NaiveDate::from_ymd_opt(*year, *month, *day).unwrap(),
             value: Self::parse_value(value_zl, value_gr)?,
         })
+    }
+    pub fn id(&self) -> Option<usize> {
+        self.id
     }
     pub fn description(&self) -> &str {
         &self.description

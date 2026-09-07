@@ -1,5 +1,6 @@
-use crate::record::{Record, RecordError, ValueError};
-use crate::sheet::/*{Sheet, */SheetError;//};
+use crate::record::{ Record, RecordError, ValueError };
+use crate::sheet::/*{ Sheet,*/ SheetError;// };
+use crate::sheetcollection::{ SheetCollection };
 use eframe::egui;
 
 // EasyMoneyManager {{{
@@ -27,7 +28,7 @@ pub struct EasyMoneyManager {
 // Initialization {{{
 impl Default for EasyMoneyManager {
     fn default() -> Self {
-        Self {
+        let mut def: Self = Self {
             description: String::new(),
             day: 0,
             month: 0,
@@ -37,27 +38,28 @@ impl Default for EasyMoneyManager {
             error_msg: String::new(),
 
             sheet_collections: [
-                SheetCollection {
-                    name: "Past",
-                    sheets: vec![
-                        Sheet::create("Incomes".to_str(), 100),
-                        Sheet::create("Essentials".to_str(), 50),
-                        Sheet::create("Stability".to_str(), 15),
-                        Sheet::create("Growth".to_str(), 25),
-                        Sheet::create("Prizes".to_str(), 10)
-                    ],
-                }
-                SheetCollection {
-                    name: "Future",
-                    sheets: vec![
-                        Sheet::create("Incomes".to_str(), 100),
-                        Sheet::create("Expenses".to_str(), 100),
-                    ],
-                }
-            ]
+                SheetCollection::create(&"Past".to_string()),
+                SheetCollection::create(&"Future".to_string()),
+            ],
             active_collection: 0,
             active_sheet: 0,
-        }
+        };
+        for (name, fraction) in [
+            ("Incomes", 100),
+            ("Essentials", 50),
+            ("Stability", 15),
+            ("Growth", 25),
+            ("Prizes", 10)
+        ] {
+                def.sheet_collections[0].push(name, fraction);
+            }
+        for (name, fraction) in [
+            ("Incomes", 100),
+            ("Expenses", 100),
+        ] {
+                def.sheet_collections[1].push(name, fraction);
+            }
+            def
     }
 }
 // }}}
@@ -66,7 +68,7 @@ impl Default for EasyMoneyManager {
 impl EasyMoneyManager {
     pub fn balance(&self) -> i64 {
         let mut balance: i64 = self.sheet_collections[self.active_collection].sheets[0].sum();
-        for sheet in &self.sheet_collections[self.active_collection].sheets[1..&self.sheet_collections[self.active_collection]].sheets.len() {
+        for sheet in &self.sheet_collections[self.active_collection].sheets[1..self.sheet_collections[self.active_collection].len()] {
             balance -= sheet.sum();
         }
         balance
@@ -85,22 +87,35 @@ impl eframe::App for EasyMoneyManager {
             ui.horizontal(|ui| {
 
                 // Sheet choose and basic stats {{{
-                ui.vertical(|ui| {
-                    for (index, sheet) in self.sheet_collections[self.active_collection].sheets.iter().enumerate() {
-                        ui.horizontal(|ui| {
-                            if ui.button(&sheet.name).clicked() {
-                                self.active_sheet = index;
+                ui.horizontal(|ui| {
+                    ui.vertical(|ui| {
+                        for (index, sheet_collection) in self.sheet_collections.iter().enumerate() {
+                            if ui.button(&sheet_collection.name).clicked() {
+                                self.active_collection = index;
                             }
-                            if 0 == index {
-                                ui.label(sheet.sum_display());
-                            } else {
-                                ui.label(sheet.balance_display(&self.sheet_collections[self.active_collection].sheets[0].sum()));
-                            }
-                        });
-                    }
-                    ui.label(format!("Balance\t{}", self.balance_display()));
+                        }
+                    });
+                    ui.vertical(|ui| {
+                        let sheet_collection = &self.sheet_collections[self.active_collection];
+                        for (index, sheet) in sheet_collection.sheets.iter().enumerate() {
+                            ui.horizontal(|ui| {
+                                if ui.button(&sheet.name).clicked() {
+                                    self.active_sheet = index;
+                                }
+                                if self.active_collection == 0 {
+                                    if index == 0 {
+                                        ui.label(sheet.sum_display());
+                                    } else {
+                                        ui.label(sheet.balance_display(&sheet_collection.sheets[0].sum()));
+                                    }
+                                }
+                            });
+                        }
+                        if self.active_collection == 0 {
+                            ui.label(format!("Balance\t{}", self.balance_display()));
+                        }
+                    });
                 });
-
                 let sheet = &mut self.sheet_collections[self.active_collection].sheets[self.active_sheet];
 
                 ui.separator();
@@ -108,10 +123,7 @@ impl eframe::App for EasyMoneyManager {
                     // }}}
 
                     // Add content to sheet {{{
-                    egui::Grid::new("add_record_grid")
-                    .num_columns(2)
-                    .spacing([20.0, 8.0])
-                    .show(ui, |ui| {
+                    egui::Grid::new("add_record_grid").num_columns(2).spacing([20.0, 8.0]).show(ui, |ui| {
 
                         // Name {{{
                         ui.label("Name");
@@ -157,69 +169,69 @@ impl eframe::App for EasyMoneyManager {
                 if ui.button("Add record").clicked() {
                     match Record::from_input(&self.description, &self.year, &self.month, &self.day, &self.value_zl, &self.value_gr) {
                         Ok(record) => {
-                                sheet.push(record);
-                                self.error_msg = String::new();
-                            },
-                            Err(error) => {
-                                self.error_msg = match error {
-                                    RecordError::EmptyDescription => "Description can't be empty".to_string(),
-                                    RecordError::InvalidYear => "Year has to be integer between 1900 and 2200".to_string(),
-                                    RecordError::InvalidMonth => "Month has to be valid (integer between 1 and 12)".to_string(),
-                                    RecordError::InvalidDay => "Day has to be valid (integer that satysfies \"day > 0 && (((day < 30 + ((month % 2) ^ (month > 7))) && month != 2) || month == 2 && day < 28 + ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0))\")".to_string(),
-                                    RecordError::ValueError(ValueError::InvalidValueZl) => "There's some unwanted sign in value field".to_string(),
-                                    RecordError::ValueError(ValueError::InvalidValueGr) => "There's some unwanted sign in decimal value field".to_string(),
-                                    RecordError::ValueError(ValueError::TooBigGr)  => "Too big decimal value".to_string(),
-                                };
-                            },
-                        }
+                            sheet.push(record);
+                            self.error_msg = String::new();
+                        },
+                        Err(error) => {
+                            self.error_msg = match error {
+                                RecordError::EmptyDescription => "Description can't be empty".to_string(),
+                                RecordError::InvalidYear => "Year has to be integer between 1900 and 2200".to_string(),
+                                RecordError::InvalidMonth => "Month has to be valid (integer between 1 and 12)".to_string(),
+                                RecordError::InvalidDay => "Day has to be valid (integer that satysfies \"day > 0 && (((day < 30 + ((month % 2) ^ (month > 7))) && month != 2) || month == 2 && day < 28 + ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0))\")".to_string(),
+                                RecordError::ValueError(ValueError::InvalidValueZl) => "There's some unwanted sign in value field".to_string(),
+                                RecordError::ValueError(ValueError::InvalidValueGr) => "There's some unwanted sign in decimal value field".to_string(),
+                                RecordError::ValueError(ValueError::TooBigGr)  => "Too big decimal value".to_string(),
+                            };
+                        },
                     }
-                    ui.label(&self.error_msg);
-                    // }}}
+                }
+                ui.label(&self.error_msg);
+                // }}}
 
-                    // Display sheet's content {{{
-                    ui.heading(&sheet.name);
-                    let mut remove_index = None;
+                // Display sheet's content {{{
+                ui.heading(&sheet.name);
+                let mut remove_index = None;
 
-                    if !sheet.is_empty() {
-                        egui::Grid::new("display_sheet_content_grid")
-                            .num_columns(5)
-                            .spacing([15.0, 10.0])
-                            .show(ui, |ui| {
-                                ui.label("Name");
-                                ui.label("Date");
-                                ui.label("Value");
-                                ui.end_row();
-                                for index in 0..sheet.len() {
-                                    let record = &mut sheet.records[index];
-                                        ui.label(record.description());
-                                        ui.label(record.date_display());
-                                        ui.label(record.value_display());
+                if !sheet.is_empty() {
+                    egui::Grid::new("display_sheet_content_grid")
+                        .num_columns(5)
+                        .spacing([15.0, 10.0])
+                        .show(ui, |ui| {
+                            ui.label("Name");
+                            ui.label("Date");
+                            ui.label("Value");
+                            ui.end_row();
+                            for index in 0..sheet.len() {
+                                let record = &mut sheet.records[index];
+                                ui.label(record.description());
+                                ui.label(record.date_display());
+                                ui.label(record.value_display());
 
-                                        // Edit button {{{
-                                        if ui.button("Edit").clicked() {
-                                            record.date_set(&self.year, &self.month, &self.day);
-                                            record.description_set(&self.description);
-                                            record.value_set(&self.value_zl, &self.value_gr);                                }
-                                        // }}}
+                                // Edit button {{{
+                                if ui.button("Edit").clicked() {
+                                    record.date_set(&self.year, &self.month, &self.day);
+                                    record.description_set(&self.description);
+                                    record.value_set(&self.value_zl, &self.value_gr);                                }
+                                // }}}
 
-                                        // Remove button {{{
-                                        if ui.button("Remove").clicked() {
-                                            remove_index = Some(index);
-                                        }
-                                        // }}}
-                                    ui.end_row();
+                                // Remove button {{{
+                                if ui.button("Remove").clicked() {
+                                    remove_index = Some(index);
                                 }
-                            });
-                        if let Some(index) = remove_index {
-                            match sheet.remove(index) {
-                                Ok(()) => { },
-                                Err(SheetError::IndexOutOfBounds) => { ui.label("Something went wrong with removing last record, please contact support for support"); },
+                                // }}}
+                                ui.end_row();
                             }
+                        });
+                    if let Some(index) = remove_index {
+                        match sheet.remove(index) {
+                            Ok(()) => { },
+                            Err(SheetError::IndexOutOfBounds) => { ui.label("Something went wrong with removing last record, please contact support for support"); },
                         }
                     }
-                    // }}}
+                }
+                // }}}
 
-                });
+            });
             });
         });
     }
