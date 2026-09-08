@@ -1,4 +1,5 @@
 use rusqlite::Connection;
+use chrono::NaiveDate;
 
 pub struct Database {
     connection: Connection,
@@ -19,6 +20,7 @@ impl Database {
                 id INTEGER PRIMARY KEY,
                 collection_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
+                fraction INTEGER NOT NULL,
 
                 FOREIGN KEY (collection_id)
                     REFERENCES collections(id)
@@ -39,18 +41,9 @@ impl Database {
         Ok(Self { connection })
     }
     pub fn initialize(&self) -> rusqlite::Result<()> {
-        let main_id: i64 = self.get_or_create_collection("Main")?;
-        self.get_or_create_sheet(main_id, "Incomes")?;
-        self.get_or_create_sheet(main_id, "Essentials")?;
-        self.get_or_create_sheet(main_id, "Stability")?;
-        self.get_or_create_sheet(main_id, "Growth")?;
-        self.get_or_create_sheet(main_id, "Other")?;
-        let plan_id: i64 = self.get_or_add_collection("Planning")?;
-        self.get_or_create_sheet(plan_id, "Incomes")?;
-        self.get_or_create_sheet(plan_id, "Expenses")?;
-        println!("{:?}", self.get_collection("Main").unwrap());
         Ok(())
     }
+
     pub fn create_collection(&self, name: &str) -> rusqlite::Result<i64> {
         self.connection.execute("INSERT INTO collections (name) VALUES (?1)", [name])?;
         Ok(self.connection.last_insert_rowid())
@@ -67,22 +60,38 @@ impl Database {
             Err(error) => Err(error),
         }
     }
-    pub fn create_sheet(&self, collection_id: i64, name: &str) -> rusqlite::Result<i64> {
-        self.connection.execute("INSERT INTO sheets (collection_id, name) VALUES (?1, ?2)", (collection_id, name))?;
+
+    pub fn create_sheet(&self, collection_id: i64, name: &str, fraction: i64) -> rusqlite::Result<i64> {
+        self.connection.execute("INSERT INTO sheets (collection_id, name, fraction) VALUES (?1, ?2, ?3)", (collection_id, name, fraction))?;
         Ok(self.connection.last_insert_rowid())
     }
     pub fn get_sheet(&self, collection_id: i64, name: &str) -> rusqlite::Result<i64> {
         self.connection.query_row("SELECT id FROM sheets WHERE collection_id = ?1 AND name = ?2", (collection_id, name), |row| row.get(0))
     }
-    pub fn get_or_create_sheet(&self, collection_id: i64, name: &str) -> rusqlite::Result<i64> {
+    pub fn get_or_create_sheet(&self, collection_id: i64, name: &str, fraction: i64) -> rusqlite::Result<i64> {
         match self.get_sheet(collection_id, name) {
             Ok(id) => Ok(id),
             Err(rusqlite::Error::QueryReturnedNoRows) => {
-                self.create_sheet(collection_id, name)
+                self.create_sheet(collection_id, name, fraction)
             }
             Err(error) => Err(error),
         }
     }
-//    pub fn create_record(&self) {
-//    }
+
+    pub fn create_record(&self, sheet_id: i64, description: &str, date: NaiveDate, value: i64) -> rusqlite::Result<i64> {
+        self.connection.execute("INSERT INTO records (sheet_id, description, date, value) VALUES (?1, ?2, ?3, ?4)", (sheet_id, description, date.to_string(), value))?;
+        Ok(self.connection.last_insert_rowid())
+    }
+    pub fn get_record(&self, sheet_id: i64, description: &str, date: NaiveDate, value: i64) -> rusqlite::Result<i64> {
+        self.connection.query_row("SELECT id from records WHERE sheet_id = ?1 and description = ?2 AND date = ?3 AND value = ?4", (sheet_id, description, date.to_string(), value), |row| row.get(0))
+    }
+    pub fn get_records(&self) -> rusqlite::Result<()> {
+        Ok(())
+    }
+    pub fn update_record(&self) -> rusqlite::Result<()> {
+        Ok(())
+    }
+    pub fn remove_record(&self) -> rusqlite::Result<()> {
+        Ok(())
+    }
 }

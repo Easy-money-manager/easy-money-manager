@@ -15,27 +15,40 @@ pub enum SheetError {
 // of your income it's fraction 50 (50% = 50 (= fraction) / 100)
 
 pub struct Sheet {
+    pub id: i64,
     pub name: String,
     pub records: Vec<Record>,
     pub fraction: i64,
 }
-impl Default for Sheet {
+
+/*impl Default for Sheet {
     fn default() -> Self {
         Self {
+            id: 0,
             name: String::new(),
             records: Vec::new(),
             fraction: 0,
         }
     }
-}
+}*/
+
 impl Sheet {
-    pub fn create(name: &str, fraction: i64) -> Self {
+    pub fn new(id: i64, name: &str, fraction: i64) -> Self {
         Self {
+            id: id,
             name: name.to_string(),
             fraction: fraction,
             records: Vec::new(),
         }
     }
+
+    pub fn id(&self) -> i64 {
+        self.id
+    }
+    pub fn set_id(&mut self, id: i64) {
+        self.id = id;
+    }
+
     pub fn sum(&self) -> i64 {
         let mut sum = 0;
         for record in &self.records {
@@ -46,6 +59,13 @@ impl Sheet {
     pub fn sum_display(&self) -> String {
         (self.sum() as f64 / 100.0).to_string()
     }
+    pub fn balance(&self, incomes: &i64) -> i64 {
+        incomes * self.fraction / 100 - self.sum()
+    }
+    pub fn balance_display(&self, incomes: &i64) -> String {
+        (self.balance(incomes) as f64 / 100.0).to_string()
+    }
+
     pub fn push(&mut self, record: Record) {
         self.records.push(record);
     }
@@ -56,15 +76,19 @@ impl Sheet {
         self.records.len()
     }
     pub fn remove(&mut self, index: usize) -> Result<(), SheetError> {
-        if index >= self.len() { return Err(SheetError::IndexOutOfBounds); }
+        if index >= self.len() {
+            return Err(SheetError::IndexOutOfBounds);
+        }
         self.records.remove(index);
         Ok(())
     }
-    pub fn balance(&self, incomes: &i64) -> i64 {
-        incomes * self.fraction / 100 - self.sum()
-    }
-    pub fn balance_display(&self, incomes: &i64) -> String {
-        (self.balance(incomes) as f64 / 100.0).to_string()
+    pub fn edit(&mut self, index: usize, record: Record) -> Result <(), SheetError> {
+        if index >= self.len() {
+            return Err(SheetError::IndexOutOfBounds);
+        }
+        self.records.push(record);
+        self.records.swap_remove(index);
+        Ok(())
     }
 }
 

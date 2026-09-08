@@ -21,6 +21,32 @@ impl From<ValueError> for RecordError {
     }
 }
 
+impl RecordError {
+    pub fn message(&self) -> &'static str {
+        match self {
+            Self::EmptyDescription =>
+                "Description can't be empty",
+
+            Self::InvalidYear =>
+                "Year has to be an integer between 1900 and 2200",
+
+            Self::InvalidMonth =>
+                "Month has to be an integer between 1 and 12",
+
+            Self::InvalidDay =>
+                "Invalid day for the selected month and year",
+
+            Self::ValueError(ValueError::InvalidValueZl) =>
+                "There's an unwanted sign in the value field",
+
+            Self::ValueError(ValueError::InvalidValueGr) =>
+                "There's an unwanted sign in the decimal value field",
+
+            Self::ValueError(ValueError::TooBigGr) =>
+                "Decimal value must be between 0 and 99",
+        }
+    }
+}
 
 // Record
 //
@@ -29,32 +55,25 @@ impl From<ValueError> for RecordError {
 // value - value of that flow; i64 because computers have problem with calculating 
 // decimal fractions so to display it's just gonna be display value / 100
 
+#[derive(Clone)]
 pub struct Record {
-    pub id: Option<i64>,
+    pub id: i64,
     pub description: String,
     pub date: chrono::NaiveDate,
     pub value: i64,
 }
+
 impl Default for Record {
     fn default() -> Self {
         Self {
-            id: None,
+            id: 0,
             description: String::new(),
             date: Local::now().date_naive(),
             value: 0,
         }
     }
 }
-impl Clone for Record {
-    fn clone(&self) -> Record {
-        Record {
-            id: self.id,
-            description: self.description.clone(),
-            date: self.date.clone(),
-            value: self.value.clone(),
-        }
-    }
-}
+
 impl Record {
     pub fn parse_value(value_zl: &str, value_gr: &str) -> Result<i64, ValueError> {
         let zl = if value_zl.is_empty() { 0 } else {
@@ -82,29 +101,32 @@ impl Record {
             return Err(RecordError::InvalidDay);
         }
         Ok(Self {
-            id: None,
+            id: 0,
             description: description.to_string(),
             date: NaiveDate::from_ymd_opt(*year, *month, *day).unwrap(),
             value: Self::parse_value(value_zl, value_gr)?,
         })
     }
-    pub fn id(&self) -> Option<i64> {
+
+    pub fn id(&self) -> i64 {
         self.id
     }
+    pub fn id_set(&mut self,id: i64) {
+        self.id = id;
+    }
+
     pub fn description(&self) -> &str {
         &self.description
     }
+    pub fn description_set(&mut self, description: &str) {
+        self.description = description.to_string();
+    }
+
+    pub fn value(&self) -> i64 {
+        self.value
+    }
     pub fn value_display(&self) -> String {
         (self.value as f64 / 100.0).to_string()
-    }
-    pub fn date_display(&self) -> String {
-        self.date.format("%d.%m.%Y").to_string()
-    }
-    pub fn date_set(&mut self, year: &i32, month: &u32, day: &u32) {
-        self.date = NaiveDate::from_ymd_opt(*year, *month, *day).unwrap();
-    }
-    pub fn description_set(&mut self, description: &String) {
-        self.description = description.clone();
     }
     pub fn value_set(&mut self, value_zl: &String, value_gr: &String) {
         self.value = match value_zl.is_empty() {
@@ -120,6 +142,16 @@ impl Record {
             },
             true  => 0,
         };
+    }
+
+    pub fn date(&self) -> NaiveDate {
+        self.date
+    }
+    pub fn date_display(&self) -> String {
+        self.date.format("%d.%m.%Y").to_string()
+    }
+    pub fn date_set(&mut self, year: &i32, month: &u32, day: &u32) {
+        self.date = NaiveDate::from_ymd_opt(*year, *month, *day).unwrap();
     }
 }
 
