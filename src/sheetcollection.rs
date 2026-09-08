@@ -30,6 +30,7 @@ impl SheetCollection {
         self.sheets.len()
     }
 
+    #[allow(dead_code)]
     pub fn active_sheet_index(&self) -> usize {
         self.active_sheet
     }
@@ -55,6 +56,7 @@ impl SheetCollection {
         self.id = id;
     }
 
+    #[allow(dead_code)]
     pub fn create(name: &str) -> Self {
         Self {
             id: 0,

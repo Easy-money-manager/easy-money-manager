@@ -10,7 +10,10 @@ impl Database {
     pub fn new(path: &str) -> rusqlite::Result<Self> {
         let connection = Connection::open(path)?;
 
-        connection.execute_batch(
+        Ok(Self { connection } )
+    }
+    pub fn initialize(&self) -> rusqlite::Result<()> {
+        self.connection.execute_batch(
             "
             CREATE TABLE IF NOT EXISTS collections (
                 id INTEGER PRIMARY KEY,
@@ -39,9 +42,6 @@ impl Database {
             );
             ",
         )?;
-        Ok(Self { connection })
-    }
-    pub fn initialize(&self) -> rusqlite::Result<()> {
         Ok(())
     }
 
@@ -83,6 +83,7 @@ impl Database {
         self.connection.execute("INSERT INTO records (sheet_id, description, date, value) VALUES (?1, ?2, ?3, ?4)", (sheet_id, description, date.to_string(), value))?;
         Ok(self.connection.last_insert_rowid())
     }
+    #[allow(dead_code)]
     pub fn get_record(&self, sheet_id: i64, description: &str, date: NaiveDate, value: i64) -> rusqlite::Result<i64> {
         self.connection.query_row("SELECT id from records WHERE sheet_id = ?1 and description = ?2 AND date = ?3 AND value = ?4", (sheet_id, description, date.to_string(), value), |row| row.get(0))
     }
@@ -97,7 +98,7 @@ impl Database {
             |row| {
                 let date_string: String = row.get(2)?;
 
-                let date = NaiveDate::parse_from_str(&date_string, "%Y-%m-%d").unwrap();
+                let date = NaiveDate::parse_from_str(&date_string, "%Y-%m-%d").expect("Failed to parse date from database's string");
 
                 Ok(Record {
                     id: row.get(0)?,

@@ -45,7 +45,8 @@ impl Sheet {
     pub fn id(&self) -> i64 {
         self.id
     }
-    pub fn set_id(&mut self, id: i64) {
+    #[allow(dead_code)]
+    pub fn id_set(&mut self, id: i64) {
         self.id = id;
     }
 

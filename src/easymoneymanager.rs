@@ -40,12 +40,18 @@ impl Default for EasyMoneyManager {
                 SheetCollection::new(2, &"Planning".to_string()),
             ],
             active_collection: 0,
-            database: Database::new("easy_money_manager.db").expect("Failed to open database"),
+            database: Database::new("easy_money_manager.db").expect("Failed to initialize database"),
         };
-        def.database.initialize().expect("Failed to initialize database");
+        match def.database.initialize() {
+            Ok(()) => { },
+            Err(error) => eprintln!("Failed to initialize database: {}", error),
+        };
 
         for sheet_collection in &mut def.sheet_collections {
-            sheet_collection.id_set(def.database.get_or_create_collection(&sheet_collection.name).unwrap());
+            match def.database.get_or_create_collection(&sheet_collection.name) {
+                Ok(collection_id) => sheet_collection.id_set(collection_id),
+                Err(error) => eprintln!("Failed to load collection {}:{}", sheet_collection.name, error),
+            }
             match sheet_collection.name.as_str() {
                 "Main" => {
                     for (name, fraction) in [
@@ -55,11 +61,10 @@ impl Default for EasyMoneyManager {
                         ("Growth", 25),
                         ("Prizes", 10)
                     ] {
-                        sheet_collection.push(
-                            def.database.get_or_create_sheet(sheet_collection.id(), &name, fraction).unwrap(),
-                            name,
-                            fraction,
-                        );
+                        match def.database.get_or_create_sheet(sheet_collection.id(), &name, fraction) {
+                            Ok(sheet_id) => sheet_collection.push(sheet_id, name, fraction),
+                            Err(error) => eprintln!("Failed to load sheet {}:{}", name, error),
+                        }
                     }
                 }
                 "Planning" => {
@@ -67,11 +72,10 @@ impl Default for EasyMoneyManager {
                         ("Incomes", 100),
                         ("Expenses", 100),
                     ] {
-                        sheet_collection.push(
-                            def.database.get_or_create_sheet(sheet_collection.id(), &name, fraction).unwrap(),
-                            name,
-                            fraction,
-                        );
+                        match def.database.get_or_create_sheet(sheet_collection.id(), &name, fraction) {
+                            Ok(sheet_id) => sheet_collection.push(sheet_id, name, fraction),
+                            Err(error) => eprintln!("Failed to load sheet {}:{}", name, error),
+                        }
                     }
                 }
                 _ => { },
