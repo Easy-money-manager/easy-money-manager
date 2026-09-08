@@ -7,4 +7,7 @@ cargo run
 ```
 
 Todo:
- - [x] record unit tests
+ - [x] compiles
+ - [x] runs
+ - [x] unit tests passed
+ - [ ] logic tests passed
