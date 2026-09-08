@@ -1,4 +1,5 @@
-use chrono::{NaiveDate, Local};
+use chrono::{ NaiveDate, Local };
+use serde::{ Serialize, Deserialize };
 
 #[derive(Debug)]
 pub enum RecordError {
@@ -55,7 +56,7 @@ impl RecordError {
 // value - value of that flow; i64 because computers have problem with calculating 
 // decimal fractions so to display it's just gonna be display value / 100
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Record {
     pub id: i64,
     pub description: String,
