@@ -77,6 +77,14 @@ impl Default for EasyMoneyManager {
                 _ => { },
             }
         }
+        for sheet_collection in &mut def.sheet_collections {
+            for sheet in &mut sheet_collection.sheets {
+                match def.database.get_records(sheet.id()) {
+                    Ok(records) => sheet.records = records,
+                    Err(error) => eprintln!("Failed to load records for sheet {}:{}", sheet.name, error),
+                }
+            }
+        }
         def
     }
 }
@@ -148,8 +156,11 @@ impl EasyMoneyManager {
                 return;
             },
         };
+
+        record.id_set(self.active_collection().active_sheet().records[index].id());
+
         match self.database.get_record(
-            self.active_collection().active_sheet().id(),
+            record.id,
             &record.description(),
             record.date(),
             record.value()
@@ -168,7 +179,7 @@ impl EasyMoneyManager {
         };
     }
     pub fn remove_record(&mut self, index: usize) {
-        match self.database.remove_record() {
+        match self.database.remove_record(self.active_collection().active_sheet().records[index].id()) {
             Ok(()) => match self.active_collection_mut().active_sheet_mut().remove(index) {
                 Ok(()) => { },
                 Err(SheetError::IndexOutOfBounds) => self.error_msg = format!("Failed to remove record from cache vector"),

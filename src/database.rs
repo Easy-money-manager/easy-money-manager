@@ -1,5 +1,6 @@
 use rusqlite::Connection;
 use chrono::NaiveDate;
+use crate::record::Record;
 
 pub struct Database {
     connection: Connection,
@@ -85,13 +86,54 @@ impl Database {
     pub fn get_record(&self, sheet_id: i64, description: &str, date: NaiveDate, value: i64) -> rusqlite::Result<i64> {
         self.connection.query_row("SELECT id from records WHERE sheet_id = ?1 and description = ?2 AND date = ?3 AND value = ?4", (sheet_id, description, date.to_string(), value), |row| row.get(0))
     }
-    pub fn get_records(&self) -> rusqlite::Result<()> {
+    pub fn get_records(&self, sheet_id: i64) -> rusqlite::Result<Vec<Record>> {
+        let mut statement = self.connection.prepare(
+            "SELECT id, description, date, value
+            FROM records
+            WHERE sheet_id = ?1"
+            )?;
+        let records = statement.query_map(
+            [sheet_id],
+            |row| {
+                let date_string: String = row.get(2)?;
+
+                let date = NaiveDate::parse_from_str(&date_string, "%Y-%m-%d").unwrap();
+
+                Ok(Record {
+                    id: row.get(0)?,
+                    description: row.get(1)?,
+                    date,
+                    value: row.get(3)?,
+                })
+            },
+        )?;
+
+        let mut result: Vec<Record> = Vec::new();
+        for record in records{
+            result.push(record?);
+        }
+
+        Ok(result)
+    }
+    pub fn update_record(&self, id: i64, description: &str, date: NaiveDate, value: i64) -> rusqlite::Result<()> {
+        self.connection.execute(
+            "UPDATE records
+            SET description = ?1,
+            date = ?2,
+            value = ?3
+            WHERE id = ?4",
+            (description, date.to_string(), value, id)
+            )?;
+
         Ok(())
     }
-    pub fn update_record(&self) -> rusqlite::Result<()> {
-        Ok(())
-    }
-    pub fn remove_record(&self) -> rusqlite::Result<()> {
+    pub fn remove_record(&self, id: i64) -> rusqlite::Result<()> {
+        self.connection.execute(
+            "DELETE FROM records
+            WHERE id = ?1",
+            [id]
+        )?;
+
         Ok(())
     }
 }

@@ -86,8 +86,7 @@ impl Sheet {
         if index >= self.len() {
             return Err(SheetError::IndexOutOfBounds);
         }
-        self.records.push(record);
-        self.records.swap_remove(index);
+        self.records[index] = record;
         Ok(())
     }
 }
