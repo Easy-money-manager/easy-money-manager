@@ -159,14 +159,13 @@ impl EasyMoneyManager {
 
         record.id_set(self.active_collection().active_sheet().records[index].id());
 
-        match self.database.get_record(
+        match self.database.update_record(
             record.id,
             &record.description(),
             record.date(),
             record.value()
         ) {
-            Ok(id) => {
-                record.id = id;
+            Ok(()) => {
                 match self.active_collection_mut().active_sheet_mut().edit(index, record) {
                     Ok(()) => { },
                     Err(SheetError::IndexOutOfBounds) => self.error_msg = format!("Failed to edit record from cache vector"),
