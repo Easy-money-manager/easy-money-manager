@@ -1,8 +1,9 @@
-mod easymoneymanager;
 mod record;
 mod sheet;
 mod sheetcollection;
 mod database;
+mod easymoneymanager;
+mod server
 use easymoneymanager::EasyMoneyManager;
 
 #[cfg(target_arch = "wasm32")]

@@ -6,6 +6,7 @@ pub struct Database {
     connection: Connection,
 }
 
+#[allow(dead_code, unused_assignments)]
 impl Database {
     pub fn new(path: &str) -> rusqlite::Result<Self> {
         let connection = Connection::open(path)?;

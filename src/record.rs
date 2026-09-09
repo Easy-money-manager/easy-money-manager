@@ -75,6 +75,7 @@ impl Default for Record {
     }
 }
 
+#[allow(dead_code, unused_assignments)]
 impl Record {
     pub fn parse_value(value_zl: &str, value_gr: &str) -> Result<i64, ValueError> {
         let zl = if value_zl.is_empty() { 0 } else {
@@ -113,7 +114,6 @@ impl Record {
                 2 == *month && *day > 28 + (*year % 4 == 0 && *year % 100 != 0 || *year % 400 == 0) as u32 {
             return Err(RecordError::InvalidDay);
         }
-        #[allow(unused_assignments)]
         let mut date: NaiveDate = NaiveDate::default();
         match NaiveDate::from_ymd_opt(*year, *month, *day) {
             Some(date_from_parse) => date = date_from_parse,
@@ -122,7 +122,6 @@ impl Record {
                 return Err(RecordError::InvalidYear);
             }
         }
-        #[allow(unused_assignments)]
         let mut value: i64 = 0;
         match Self::parse_value(value_zl, value_gr) {
             Ok(value_from_parse) => value = value_from_parse,
@@ -149,7 +148,6 @@ impl Record {
     pub fn description(&self) -> &str {
         &self.description
     }
-    #[allow(dead_code)]
     pub fn description_set(&mut self, description: &str) {
         self.description = description.to_string();
     }
@@ -160,7 +158,6 @@ impl Record {
     pub fn value_display(&self) -> String {
         (self.value as f64 / 100.0).to_string()
     }
-    #[allow(dead_code)]
     pub fn value_set(&mut self, value_zl: &String, value_gr: &String) {
         self.value = match value_zl.is_empty() {
             false => (match value_zl.parse::<i64>() {
@@ -183,7 +180,6 @@ impl Record {
     pub fn date_display(&self) -> String {
         self.date.format("%d.%m.%Y").to_string()
     }
-    #[allow(dead_code)]
     pub fn date_set(&mut self, year: &i32, month: &u32, day: &u32) {
         match NaiveDate::from_ymd_opt(*year, *month, *day) {
             Some(date) => self.date = date,
