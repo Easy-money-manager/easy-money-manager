@@ -127,6 +127,10 @@ fn records_router() -> Router<AppState> {
 
 pub async fn run() {
     let database = Database::new("easy_money_manager.db").expect("Failed to initialize database");
+    match database.initialize() {
+        Ok(())     => eprintln!("Initialized database"),
+        Err(error) => eprintln!("Failed to initialize database: {}", error),
+    };
 
     let state = AppState {
         database: Arc::new(Mutex::new(database)),
