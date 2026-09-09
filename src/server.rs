@@ -1,4 +1,4 @@
-use axum::{ Router, routing::get, Json, extract::{ Path, State } };
+use axum::{ Router, routing::{ get, put }, Json, extract::{ Path, State }, http::StatusCode };
 use serde::Serialize;
 use std::sync::{ Arc, Mutex};
 use crate::database::Database;
@@ -14,18 +14,115 @@ pub struct AppState {
     database: Arc<Mutex<Database>>,
 }
 
+#[derive(serde::Deserialize)]
+struct CreateRecordRequest {
+    description: String,
+    date: chrono::NaiveDate,
+    value: i64,
+}
+
+#[derive(serde::Deserialize)]
+struct UpdateRecordRequest {
+    description: String,
+    date: chrono::NaiveDate,
+    value: i64,
+}
+
 async fn test() -> Json<TestResponse> {
     Json(TestResponse {
         message: "Server works".to_string(),
     })
 }
 
-pub async fn get_records(Path(sheet_id): Path<i64>, State(state): State<AppState>) -> Json<Vec<Record>> {
-    let database = state.database.lock().unwrap();
+async fn get_records(Path(sheet_id): Path<i64>, State(state): State<AppState>) -> Result<Json<Vec<Record>>, StatusCode> {
+    let database = match state.database.lock() {
+        Ok(database) => database,
+        Err(error)   => {
+            eprintln!("Failed to lock database: {}", error);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
 
-    let records = database.get_records(sheet_id).unwrap();
+    match database.get_records(sheet_id) {
+        Ok(records) => Ok(Json(records)),
+        Err(error)  => {
+            eprintln!("Failed to get records: {}", error);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
 
-    Json(records)
+async fn create_record(Path(sheet_id): Path<i64>, State(state): State<AppState>, Json(input): Json<CreateRecordRequest>) -> Result<Json<Record>, StatusCode> {
+    let database = match state.database.lock() {
+        Ok(database) => database,
+        Err(error)   => {
+            eprintln!("Failed to lock database: {}", error);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let id = match database.create_record(sheet_id, &input.description, input.date, input.value) {
+        Ok(id)     => id,
+        Err(error) => {
+            eprintln!("Failed to create record: {}", error);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    Ok(Json(Record {
+        id,
+        description: input.description,
+        date: input.date,
+        value: input.value
+    }))
+}
+
+async fn update_record(Path(id): Path<i64>, State(state): State<AppState>, Json(input): Json<UpdateRecordRequest>) -> Result<StatusCode, StatusCode> {
+    let database = match state.database.lock() {
+        Ok(database) => database,
+        Err(error)   => {
+            eprintln!("Failed to lock database: {}", error);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    match database.update_record(id, &input.description, input.date, input.value) {
+        Ok(())     => Ok(StatusCode::NO_CONTENT),
+        Err(error) => {
+            eprintln!("Failed to edit record: {}", error);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+async fn remove_record(Path(id): Path<i64>, State(state): State<AppState>) -> Result<StatusCode, StatusCode> {
+    let database = match state.database.lock() {
+        Ok(database) => database,
+        Err(error)   => {
+            eprintln!("Failed to lock database: {}", error);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    match database.remove_record(id) {
+        Ok(())     => Ok(StatusCode::NO_CONTENT),
+        Err(error) => {
+            eprintln!("Failed to remove record: {}", error);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+fn records_router() -> Router<AppState> {
+    Router::new().route(
+        "/records/sheet/{sheet_id}",
+        get(get_records)
+        .post(create_record)
+    ).route(
+        "/records/{id}",
+        put(update_record)
+        .delete(remove_record)
+    )
 }
 
 pub async fn run() {
@@ -37,7 +134,7 @@ pub async fn run() {
 
     let app = Router::new()
         .route("/", get(test))
-        .route("/records/{sheet_id}", get(get_records))
+        .merge(records_router())
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await.unwrap();
