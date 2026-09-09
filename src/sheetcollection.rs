@@ -1,5 +1,7 @@
-use crate::sheet::/*{*/Sheet;//, SheetError};
+use crate::sheet::Sheet;
+use serde::{ Serialize, Deserialize };
 
+#[derive(Serialize, Deserialize)]
 pub struct SheetCollection {
     pub id: i64,
     pub name: String,

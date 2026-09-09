@@ -2,7 +2,7 @@ use axum::{ Router, routing::{ get, put }, Json, extract::{ Path, State }, http:
 use serde::Serialize;
 use std::sync::{ Arc, Mutex};
 use crate::database::Database;
-use crate::record::Record;
+use crate::requests::{ GetRecordsResponse, CreateRecordRequest, CreateRecordResponse, UpdateRecordRequest, BootstrapResponse };
 
 #[derive(Serialize)]
 struct TestResponse {
@@ -14,19 +14,6 @@ pub struct AppState {
     database: Arc<Mutex<Database>>,
 }
 
-#[derive(serde::Deserialize)]
-struct CreateRecordRequest {
-    description: String,
-    date: chrono::NaiveDate,
-    value: i64,
-}
-
-#[derive(serde::Deserialize)]
-struct UpdateRecordRequest {
-    description: String,
-    date: chrono::NaiveDate,
-    value: i64,
-}
 
 async fn test() -> Json<TestResponse> {
     Json(TestResponse {
@@ -34,7 +21,7 @@ async fn test() -> Json<TestResponse> {
     })
 }
 
-async fn get_records(Path(sheet_id): Path<i64>, State(state): State<AppState>) -> Result<Json<Vec<Record>>, StatusCode> {
+async fn get_records(Path(sheet_id): Path<i64>, State(state): State<AppState>) -> Result<Json<GetRecordsResponse>, StatusCode> {
     let database = match state.database.lock() {
         Ok(database) => database,
         Err(error)   => {
@@ -44,7 +31,7 @@ async fn get_records(Path(sheet_id): Path<i64>, State(state): State<AppState>) -
     };
 
     match database.get_records(sheet_id) {
-        Ok(records) => Ok(Json(records)),
+        Ok(records) => Ok(Json(GetRecordsResponse{ records: records })),
         Err(error)  => {
             eprintln!("Failed to get records: {}", error);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -52,7 +39,7 @@ async fn get_records(Path(sheet_id): Path<i64>, State(state): State<AppState>) -
     }
 }
 
-async fn create_record(Path(sheet_id): Path<i64>, State(state): State<AppState>, Json(input): Json<CreateRecordRequest>) -> Result<Json<Record>, StatusCode> {
+async fn create_record(Path(sheet_id): Path<i64>, State(state): State<AppState>, Json(input): Json<CreateRecordRequest>) -> Result<Json<CreateRecordResponse>, StatusCode> {
     let database = match state.database.lock() {
         Ok(database) => database,
         Err(error)   => {
@@ -69,12 +56,7 @@ async fn create_record(Path(sheet_id): Path<i64>, State(state): State<AppState>,
         }
     };
 
-    Ok(Json(Record {
-        id,
-        description: input.description,
-        date: input.date,
-        value: input.value
-    }))
+    Ok(Json(CreateRecordResponse { id: id } ))
 }
 
 async fn update_record(Path(id): Path<i64>, State(state): State<AppState>, Json(input): Json<UpdateRecordRequest>) -> Result<StatusCode, StatusCode> {
@@ -113,6 +95,28 @@ async fn remove_record(Path(id): Path<i64>, State(state): State<AppState>) -> Re
     }
 }
 
+async fn get_bootstrap(State(state): State<AppState>) -> Result<Json<BootstrapResponse>, StatusCode> {
+    let database = match state.database.lock() {
+        Ok(database) => database,
+        Err(error)   => {
+            eprintln!("Failed to lock database: {}", error);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let mut collections = database.get_collections().unwrap();
+
+    for collection in &mut collections {
+        collection.sheets = database.get_sheets(collection.id()).unwrap();
+
+        for sheet in &mut collection.sheets {
+            sheet.records = database.get_records(sheet.id()).unwrap();
+        }
+    }
+
+    Ok(Json(BootstrapResponse { collections: collections }))
+}
+
 fn records_router() -> Router<AppState> {
     Router::new().route(
         "/records/sheet/{sheet_id}",
@@ -123,6 +127,10 @@ fn records_router() -> Router<AppState> {
         put(update_record)
         .delete(remove_record)
     )
+}
+
+fn bootstrap_router() -> Router<AppState> {
+    Router::new().route("/bootstrap", get(get_bootstrap))
 }
 
 pub async fn run() {
@@ -139,6 +147,7 @@ pub async fn run() {
     let app = Router::new()
         .route("/", get(test))
         .merge(records_router())
+        .merge(bootstrap_router())
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await.unwrap();

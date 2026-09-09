@@ -1,4 +1,5 @@
 use crate::record::Record;
+use serde::{ Serialize, Deserialize };
 
 #[derive(Debug)]
 pub enum SheetError {
@@ -14,6 +15,7 @@ pub enum SheetError {
 // calculations, so for example if for essential things you wanna spend up to 50%
 // of your income it's fraction 50 (50% = 50 (= fraction) / 100)
 
+#[derive(Serialize, Deserialize)]
 pub struct Sheet {
     pub id: i64,
     pub name: String,

@@ -1,8 +1,10 @@
 use crate::record::Record;
 use crate::sheet::SheetError;
 use crate::sheetcollection::SheetCollection;
-use crate::database::Database;
+use crate::api::ApiClient;
 use eframe::egui;
+use crate::requests::{ CreateRecordRequest, UpdateRecordRequest };
+use poll_promise::Promise;
 
 // EasyMoneyManager
 //
@@ -19,14 +21,20 @@ pub struct EasyMoneyManager {
     pub value_gr: String,
     pub error_msg: String,
 
-    pub sheet_collections: [SheetCollection; 2],
+    pub sheet_collections: Vec<SheetCollection>,
     pub active_collection: usize,
-    pub database: Database,
+    pub api_client: ApiClient,
+    pub bootstrap_loaded: bool,
+    pub bootstrap_promise: Option<Promise<Vec<SheetCollection>, reqwest::Error>>,
+    create_record_promise:,
+    update_record_promise:,
+    remove_record_promise:,
+    todo!();
 }
 
 impl Default for EasyMoneyManager {
     fn default() -> Self {
-        let mut def: Self = Self {
+        Self {
             description: String::new(),
             day: 0,
             month: 0,
@@ -35,65 +43,25 @@ impl Default for EasyMoneyManager {
             value_gr: String::new(),
             error_msg: String::new(),
 
-            sheet_collections: [
-                SheetCollection::new(1, &"Main".to_string()),
-                SheetCollection::new(2, &"Planning".to_string()),
-            ],
+            sheet_collections: Vec::new(),
             active_collection: 0,
-            database: Database::new("easy_money_manager.db").expect("Failed to initialize database"),
-        };
-        match def.database.initialize() {
-            Ok(()) => { },
-            Err(error) => eprintln!("Failed to initialize database: {}", error),
-        };
-
-        for sheet_collection in &mut def.sheet_collections {
-            match def.database.get_or_create_collection(&sheet_collection.name) {
-                Ok(collection_id) => sheet_collection.id_set(collection_id),
-                Err(error) => eprintln!("Failed to load collection {}:{}", sheet_collection.name, error),
-            }
-            match sheet_collection.name.as_str() {
-                "Main" => {
-                    for (name, fraction) in [
-                        ("Incomes", 100),
-                        ("Essentials", 50),
-                        ("Stability", 15),
-                        ("Growth", 25),
-                        ("Prizes", 10)
-                    ] {
-                        match def.database.get_or_create_sheet(sheet_collection.id(), &name, fraction) {
-                            Ok(sheet_id) => sheet_collection.push(sheet_id, name, fraction),
-                            Err(error) => eprintln!("Failed to load sheet {}:{}", name, error),
-                        }
-                    }
-                }
-                "Planning" => {
-                    for (name, fraction) in [
-                        ("Incomes", 100),
-                        ("Expenses", 100),
-                    ] {
-                        match def.database.get_or_create_sheet(sheet_collection.id(), &name, fraction) {
-                            Ok(sheet_id) => sheet_collection.push(sheet_id, name, fraction),
-                            Err(error) => eprintln!("Failed to load sheet {}:{}", name, error),
-                        }
-                    }
-                }
-                _ => { },
-            }
+            api_client: ApiClient::new("http://127.0.0.1:3000".to_string()),
+            bootstrap_promise: None,
+            bootstrap_loaded: false,
         }
-        for sheet_collection in &mut def.sheet_collections {
-            for sheet in &mut sheet_collection.sheets {
-                match def.database.get_records(sheet.id()) {
-                    Ok(records) => sheet.records = records,
-                    Err(error) => eprintln!("Failed to load records for sheet {}:{}", sheet.name, error),
-                }
-            }
-        }
-        def
     }
 }
 
 impl EasyMoneyManager {
+    pub fn load_bootstrap(&mut self) {
+        let api_client = self.api_client.clone();
+
+        self.bootstrap_promise = Some(
+            Promise::spawn_async(async move {
+                api_client.get_bootstrap().await
+            })
+        );
+    }
     pub fn balance(&self) -> i64 {
         let mut balance: i64 = self.sheet_collections[self.active_collection].sheets[0].sum();
         for sheet in &self.sheet_collections[self.active_collection].sheets[1..self.sheet_collections[self.active_collection].len()] {
@@ -129,11 +97,14 @@ impl EasyMoneyManager {
                 return;
             },
         };
-        match self.database.create_record(
+        let request: CreateRecordRequest = CreateRecordRequest {
+            description: record.description().to_string(),
+            date: record.date(),
+            value: record.value(),
+        };
+        match self.api_client.create_record(
             self.active_collection().active_sheet().id(),
-            &record.description(),
-            record.date(),
-            record.value()
+            &request
         ) {
             Ok(id) => {
                 record.id = id;
@@ -163,16 +134,20 @@ impl EasyMoneyManager {
 
         record.id_set(self.active_collection().active_sheet().records[index].id());
 
-        match self.database.update_record(
-            record.id,
-            &record.description(),
-            record.date(),
-            record.value()
+        let request = UpdateRecordRequest {
+            description: record.description().to_string(),
+            date: record.date(),
+            value: record.value(),
+        };
+
+        match self.api_client.update_record(
+            record.id(),
+            &request
         ) {
             Ok(()) => {
                 match self.active_collection_mut().active_sheet_mut().edit(index, record) {
                     Ok(()) => { },
-                    Err(SheetError::IndexOutOfBounds) => self.error_msg = format!("Failed to edit record from cache vector"),
+                    Err(SheetError::IndexOutOfBounds) => self.error_msg = format!("Failed to edit record in cache vector"),
                 }
                 self.error_msg.clear();
             },
@@ -182,10 +157,10 @@ impl EasyMoneyManager {
         };
     }
     pub fn remove_record(&mut self, index: usize) {
-        match self.database.remove_record(self.active_collection().active_sheet().records[index].id()) {
+        match self.api_client.remove_record(self.active_collection().active_sheet().records[index].id()) {
             Ok(()) => match self.active_collection_mut().active_sheet_mut().remove(index) {
                 Ok(()) => { },
-                Err(SheetError::IndexOutOfBounds) => self.error_msg = format!("Failed to remove record from cache vector"),
+                Err(SheetError::IndexOutOfBounds) => self.error_msg = format!("Failed to remove record in cache vector"),
             },
             Err(error) => {
                 self.error_msg = format!("Failed to remove record: {error}");
@@ -196,6 +171,32 @@ impl EasyMoneyManager {
 
 impl eframe::App for EasyMoneyManager {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame,) {
+
+        if !self.bootstrap_loaded && self.bootstrap_promise.is_none() {
+            self.load_bootstrap();
+        }
+
+        let bootstrap_finished = self
+            .bootstrap_promise
+            .as_ref()
+            .is_some_and(|promise| promise.ready().is_some());
+
+        if bootstrap_finished {
+            let promise = self.bootstrap_promise.take().unwrap();
+
+            match promise.block_and_take() {
+                Ok(collections) => {
+                    self.sheet_collections = collections;
+                    self.bootstrap_loaded = true;
+                    self.error_msg.clear();
+                }
+
+                Err(error) => {
+                    self.error_msg =
+                        format!("Failed to load application: {error}");
+                }
+            }
+        }
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("My sheets app");
             ui.separator();

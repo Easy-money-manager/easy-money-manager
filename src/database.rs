@@ -1,6 +1,8 @@
 use rusqlite::Connection;
 use chrono::NaiveDate;
 use crate::record::Record;
+use crate::sheetcollection::SheetCollection;
+use crate::sheet::Sheet;
 
 pub struct Database {
     connection: Connection,
@@ -46,6 +48,21 @@ impl Database {
         Ok(())
     }
 
+    pub fn get_collections(&self) -> rusqlite::Result<Vec<SheetCollection>> {
+        let mut statement = self.connection.prepare(
+            "SELECT id, name
+            FROM collections
+            ORDER BY id"
+        )?;
+        let collections = statement.query_map([], |row| {
+            Ok(SheetCollection::new(
+                    row.get(0)?,
+                    &row.get::<_,String>(1)?,
+            ))
+        })?;
+
+        collections.collect()
+    }
     pub fn create_collection(&self, name: &str) -> rusqlite::Result<i64> {
         self.connection.execute("INSERT INTO collections (name) VALUES (?1)", [name])?;
         Ok(self.connection.last_insert_rowid())
@@ -63,6 +80,23 @@ impl Database {
         }
     }
 
+    pub fn get_sheets(&self, collection_id: i64) -> rusqlite::Result<Vec<Sheet>> {
+        let mut statement = self.connection.prepare(
+            "SELECT id, name, fraction
+            FROM sheets
+            WHERE collection_id = ?1
+            ORDER BY id"
+        )?;
+
+        let sheets = statement.query_map([collection_id], |row| {
+            Ok(Sheet::new(
+                    row.get(0)?,
+                    &row.get::<_,String>(1)?,
+                    row.get(2)?
+            ))})?;
+
+        sheets.collect()
+    }
     pub fn create_sheet(&self, collection_id: i64, name: &str, fraction: i64) -> rusqlite::Result<i64> {
         self.connection.execute("INSERT INTO sheets (collection_id, name, fraction) VALUES (?1, ?2, ?3)", (collection_id, name, fraction))?;
         Ok(self.connection.last_insert_rowid())
@@ -80,23 +114,14 @@ impl Database {
         }
     }
 
-    pub fn create_record(&self, sheet_id: i64, description: &str, date: NaiveDate, value: i64) -> rusqlite::Result<i64> {
-        self.connection.execute("INSERT INTO records (sheet_id, description, date, value) VALUES (?1, ?2, ?3, ?4)", (sheet_id, description, date.to_string(), value))?;
-        Ok(self.connection.last_insert_rowid())
-    }
-    #[allow(dead_code)]
-    pub fn get_record(&self, sheet_id: i64, description: &str, date: NaiveDate, value: i64) -> rusqlite::Result<i64> {
-        self.connection.query_row("SELECT id from records WHERE sheet_id = ?1 and description = ?2 AND date = ?3 AND value = ?4", (sheet_id, description, date.to_string(), value), |row| row.get(0))
-    }
     pub fn get_records(&self, sheet_id: i64) -> rusqlite::Result<Vec<Record>> {
         let mut statement = self.connection.prepare(
             "SELECT id, description, date, value
             FROM records
-            WHERE sheet_id = ?1"
+            WHERE sheet_id = ?1
+            ORDER BY id"
             )?;
-        let records = statement.query_map(
-            [sheet_id],
-            |row| {
+        let records = statement.query_map([sheet_id], |row| {
                 let date_string: String = row.get(2)?;
 
                 let date = NaiveDate::parse_from_str(&date_string, "%Y-%m-%d").expect("Failed to parse date from database's string");
@@ -104,7 +129,7 @@ impl Database {
                 Ok(Record {
                     id: row.get(0)?,
                     description: row.get(1)?,
-                    date,
+                    date: date,
                     value: row.get(3)?,
                 })
             },
@@ -116,6 +141,14 @@ impl Database {
         }
 
         Ok(result)
+    }
+    pub fn create_record(&self, sheet_id: i64, description: &str, date: NaiveDate, value: i64) -> rusqlite::Result<i64> {
+        self.connection.execute("INSERT INTO records (sheet_id, description, date, value) VALUES (?1, ?2, ?3, ?4)", (sheet_id, description, date.to_string(), value))?;
+        Ok(self.connection.last_insert_rowid())
+    }
+    #[allow(dead_code)]
+    pub fn get_record(&self, sheet_id: i64, description: &str, date: NaiveDate, value: i64) -> rusqlite::Result<i64> {
+        self.connection.query_row("SELECT id from records WHERE sheet_id = ?1 and description = ?2 AND date = ?3 AND value = ?4", (sheet_id, description, date.to_string(), value), |row| row.get(0))
     }
     pub fn update_record(&self, id: i64, description: &str, date: NaiveDate, value: i64) -> rusqlite::Result<()> {
         self.connection.execute(

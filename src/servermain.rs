@@ -1,8 +1,5 @@
-#[path="../server.rs"]
 mod server;
-#[path="../database.rs"]
 mod database;
-#[path="../record.rs"]
 mod record;
 
 #[tokio::main]

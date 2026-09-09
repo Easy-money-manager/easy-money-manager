@@ -5,6 +5,7 @@ mod database;
 mod easymoneymanager;
 mod server;
 mod api;
+mod requests;
 use easymoneymanager::EasyMoneyManager;
 
 #[cfg(target_arch = "wasm32")]
