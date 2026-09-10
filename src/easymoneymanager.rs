@@ -1,10 +1,11 @@
 use crate::record::Record;
+#[allow(unused_imports)]
 use crate::sheet::SheetError;
 use crate::sheetcollection::SheetCollection;
 use crate::api::ApiClient;
 use eframe::egui;
 use crate::requests::{ CreateRecordRequest, UpdateRecordRequest };
-use poll_promise::Promise;
+use tokio::task::JoinHandle;
 
 // EasyMoneyManager
 //
@@ -23,15 +24,31 @@ pub struct EasyMoneyManager {
 
     pub sheet_collections: Vec<SheetCollection>,
     pub active_collection: usize,
+
     pub api_client: ApiClient,
     pub bootstrap_loaded: bool,
-    pub bootstrap_promise: Option<Promise<Vec<SheetCollection>, reqwest::Error>>,
-    create_record_promise:,
-    update_record_promise:,
-    remove_record_promise:,
-    todo!();
+    pub bootstrap_task: Option<JoinHandle<Result<Vec<SheetCollection>, reqwest::Error>>>,
+    pub create_record_task: Option<(
+        usize,
+        usize,
+        Record,
+        JoinHandle<Result<i64, reqwest::Error>>
+    )>,
+    pub update_record_task: Option<(
+        usize,
+        usize,
+        usize,
+        Record,
+        JoinHandle<Result<(), reqwest::Error>>,
+    )>,
+    pub remove_record_task: Option< (
+        usize,
+        usize,
+        usize,
+        JoinHandle<Result<(), reqwest::Error>>,
+    )>,
+    runtime: tokio::runtime::Runtime,
 }
-
 impl Default for EasyMoneyManager {
     fn default() -> Self {
         Self {
@@ -46,22 +63,17 @@ impl Default for EasyMoneyManager {
             sheet_collections: Vec::new(),
             active_collection: 0,
             api_client: ApiClient::new("http://127.0.0.1:3000".to_string()),
-            bootstrap_promise: None,
+            bootstrap_task: None,
             bootstrap_loaded: false,
+            create_record_task: None,
+            update_record_task: None,
+            remove_record_task: None,
+            runtime: tokio::runtime::Runtime::new().unwrap(),
         }
     }
 }
 
 impl EasyMoneyManager {
-    pub fn load_bootstrap(&mut self) {
-        let api_client = self.api_client.clone();
-
-        self.bootstrap_promise = Some(
-            Promise::spawn_async(async move {
-                api_client.get_bootstrap().await
-            })
-        );
-    }
     pub fn balance(&self) -> i64 {
         let mut balance: i64 = self.sheet_collections[self.active_collection].sheets[0].sum();
         for sheet in &self.sheet_collections[self.active_collection].sheets[1..self.sheet_collections[self.active_collection].len()] {
@@ -82,8 +94,17 @@ impl EasyMoneyManager {
         &mut self.sheet_collections[collection_index]
     }
 
+    pub fn load_bootstrap(&mut self) {
+        let api_client = self.api_client.clone();
+
+        self.bootstrap_task = Some(
+            self.runtime.spawn(async move {
+                api_client.get_bootstrap().await
+            })
+        );
+    }
     pub fn add_record(&mut self) {
-        let mut record = match Record::from_input(
+        let record = match Record::from_input(
             &self.description,
             &self.year,
             &self.month,
@@ -97,24 +118,25 @@ impl EasyMoneyManager {
                 return;
             },
         };
+        let collection_index: usize = self.active_collection;
+        let sheet_index: usize = self.active_collection().active_sheet_index();
+        let api_client = self.api_client.clone();
+        let sheet_id = self.active_collection().active_sheet().id();
+
         let request: CreateRecordRequest = CreateRecordRequest {
             description: record.description().to_string(),
             date: record.date(),
             value: record.value(),
         };
-        match self.api_client.create_record(
-            self.active_collection().active_sheet().id(),
-            &request
-        ) {
-            Ok(id) => {
-                record.id = id;
-                self.active_collection_mut().active_sheet_mut().push(record);
-                self.error_msg.clear();
-            },
-            Err(error) => {
-                self.error_msg = format!("Failed to save record: {error}");
-            },
-        };
+
+        self.create_record_task = Some((
+            collection_index,
+            sheet_index,
+            record,
+            self.runtime.spawn(async move {
+                api_client.create_record(sheet_id, &request).await
+            })
+        ));
     }
     pub fn edit_record(&mut self, index: usize) {
         let mut record = match Record::from_input(
@@ -132,71 +154,109 @@ impl EasyMoneyManager {
             },
         };
 
+        let collection_index: usize = self.active_collection;
+        let sheet_index: usize = self.active_collection().active_sheet_index();
         record.id_set(self.active_collection().active_sheet().records[index].id());
+        let record_id: i64 = record.id();
 
         let request = UpdateRecordRequest {
             description: record.description().to_string(),
             date: record.date(),
             value: record.value(),
         };
+        let api_client = self.api_client.clone();
 
-        match self.api_client.update_record(
-            record.id(),
-            &request
-        ) {
-            Ok(()) => {
-                match self.active_collection_mut().active_sheet_mut().edit(index, record) {
-                    Ok(()) => { },
-                    Err(SheetError::IndexOutOfBounds) => self.error_msg = format!("Failed to edit record in cache vector"),
-                }
-                self.error_msg.clear();
-            },
-            Err(error) => {
-                self.error_msg = format!("Failed to get record: {error}");
-            },
-        };
+        self.update_record_task = Some((
+            collection_index,
+            sheet_index,
+            index,
+            record,
+            self.runtime.spawn(async move { api_client.update_record(record_id, &request).await } )
+        ));
     }
     pub fn remove_record(&mut self, index: usize) {
-        match self.api_client.remove_record(self.active_collection().active_sheet().records[index].id()) {
-            Ok(()) => match self.active_collection_mut().active_sheet_mut().remove(index) {
-                Ok(()) => { },
-                Err(SheetError::IndexOutOfBounds) => self.error_msg = format!("Failed to remove record in cache vector"),
-            },
-            Err(error) => {
-                self.error_msg = format!("Failed to remove record: {error}");
-            },
-        }
+        let api_client = self.api_client.clone();
+        let collection_index: usize = self.active_collection;
+        let sheet_index: usize = self.active_collection().active_sheet_index();
+        let record_id = self.active_collection().active_sheet().records[index].id();
+
+        self.remove_record_task = Some((
+            collection_index,
+            sheet_index,
+            index,
+            self.runtime.spawn(async move { api_client.remove_record(record_id).await } )
+        ));
     }
 }
 
 impl eframe::App for EasyMoneyManager {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame,) {
 
-        if !self.bootstrap_loaded && self.bootstrap_promise.is_none() {
+        if !self.bootstrap_loaded && self.bootstrap_task.is_none() {
             self.load_bootstrap();
         }
 
-        let bootstrap_finished = self
-            .bootstrap_promise
-            .as_ref()
-            .is_some_and(|promise| promise.ready().is_some());
-
+        let bootstrap_finished = self.bootstrap_task.as_ref().is_some_and(|task| task.is_finished());
         if bootstrap_finished {
-            let promise = self.bootstrap_promise.take().unwrap();
+            let task = self.bootstrap_task.take().unwrap();
 
-            match promise.block_and_take() {
-                Ok(collections) => {
+            match self.runtime.block_on(task) {
+                Ok(Ok(collections)) => {
                     self.sheet_collections = collections;
                     self.bootstrap_loaded = true;
                     self.error_msg.clear();
                 }
-
-                Err(error) => {
-                    self.error_msg =
-                        format!("Failed to load application: {error}");
-                }
+                Ok(Err(error)) => self.error_msg = format!("Failed to load application: {}", error),
+                Err(error)     => self.error_msg = format!("Async task failed: {}", error),
             }
         }
+
+        if !self.bootstrap_loaded {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                ui.heading("Waiting for server to bootstrap data");
+                ui.label(&self.error_msg);
+            });
+            return;
+        }
+
+        let create_finished = self.create_record_task.as_ref().is_some_and(|(_, _, _, task)| task.is_finished());
+        if create_finished {
+            let (collection_index, sheet_index, mut record, task) = self.create_record_task.take().unwrap();
+
+            match self.runtime.block_on(task) {
+                Ok(Ok(id)) => {
+                    record.id_set(id);
+                    self.sheet_collections[collection_index].sheets[sheet_index].push(record);
+                    self.error_msg.clear();
+                }
+                Ok(Err(error)) => self.error_msg = format!("[Server response] failed to create record: {}", error),
+                Err(error)     => self.error_msg = format!("Async task failed: {}", error),
+            }
+        }
+
+        let update_finished = self.update_record_task.as_ref().is_some_and(|(_, _, _, _, task)| task.is_finished());
+        if update_finished {
+            let (collection_index, sheet_index, index, record, task) = self.update_record_task.take().unwrap();
+
+            match self.runtime.block_on(task) {
+                Ok(Ok(()))     => self.sheet_collections[collection_index].sheets[sheet_index].edit(index, record).unwrap(),
+                Ok(Err(error)) => self.error_msg = format!("[Server response] failed to edit record: {}", error),
+                Err(error)     => self.error_msg = format!("Async task failed: {}", error),
+            }
+        }
+
+        let remove_finished = self.remove_record_task.as_ref().is_some_and(|(_, _, _, task)| task.is_finished());
+        if remove_finished {
+            let (collection_index, sheet_index, index, task) = self.remove_record_task.take().unwrap();
+
+            match self.runtime.block_on(task) {
+                Ok(Ok(()))     => self.sheet_collections[collection_index].sheets[sheet_index].remove(index).unwrap(),
+                Ok(Err(error)) => self.error_msg = format!("[Server response] failed to remove record: {}", error),
+                Err(error)     => self.error_msg = format!("Async task failed: {}", error),
+            }
+        }
+
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("My sheets app");
             ui.separator();

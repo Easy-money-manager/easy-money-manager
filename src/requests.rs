@@ -33,17 +33,17 @@ pub struct UpdateRecordRequest {
     pub value: i64,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct UpdateRecordResponse {
-}
+//#[derive(Serialize, Deserialize)]
+//pub struct UpdateRecordResponse {
+//}
 
 //#[derive(Serialize)]
 //pub struct RemoveRecordRequest {
 //}
 
-#[derive(Serialize, Deserialize)]
-pub struct RemoveRecordResponse {
-}
+//#[derive(Serialize, Deserialize)]
+//pub struct RemoveRecordResponse {
+//}
 
 #[derive(Serialize, Deserialize)]
 pub struct BootstrapResponse {
