@@ -1,7 +1,6 @@
 use crate::record::Record;
-#[allow(unused_imports)]
-use crate::sheet::SheetError;
 use crate::sheetcollection::SheetCollection;
+use crate::sheet::SheetError;
 use crate::api::ApiClient;
 use eframe::egui;
 use crate::requests::{ CreateRecordRequest, UpdateRecordRequest };
@@ -68,7 +67,7 @@ impl Default for EasyMoneyManager {
             create_record_task: None,
             update_record_task: None,
             remove_record_task: None,
-            runtime: tokio::runtime::Runtime::new().unwrap(),
+            runtime: tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime"),
         }
     }
 }
@@ -198,7 +197,7 @@ impl eframe::App for EasyMoneyManager {
 
         let bootstrap_finished = self.bootstrap_task.as_ref().is_some_and(|task| task.is_finished());
         if bootstrap_finished {
-            let task = self.bootstrap_task.take().unwrap();
+            let task = self.bootstrap_task.take().expect("bootstrap_task should exist when it's mared as finished");
 
             match self.runtime.block_on(task) {
                 Ok(Ok(collections)) => {
@@ -221,7 +220,7 @@ impl eframe::App for EasyMoneyManager {
 
         let create_finished = self.create_record_task.as_ref().is_some_and(|(_, _, _, task)| task.is_finished());
         if create_finished {
-            let (collection_index, sheet_index, mut record, task) = self.create_record_task.take().unwrap();
+            let (collection_index, sheet_index, mut record, task) = self.create_record_task.take().expect("create_record_task should exist when it's mared as finished");
 
             match self.runtime.block_on(task) {
                 Ok(Ok(id)) => {
@@ -236,10 +235,12 @@ impl eframe::App for EasyMoneyManager {
 
         let update_finished = self.update_record_task.as_ref().is_some_and(|(_, _, _, _, task)| task.is_finished());
         if update_finished {
-            let (collection_index, sheet_index, index, record, task) = self.update_record_task.take().unwrap();
+            let (collection_index, sheet_index, index, record, task) = self.update_record_task.take().expect("update_record_task should exist when it's mared as finished");
 
             match self.runtime.block_on(task) {
-                Ok(Ok(()))     => self.sheet_collections[collection_index].sheets[sheet_index].edit(index, record).unwrap(),
+                Ok(Ok(()))     => if let Err(SheetError::IndexOutOfBounds) = self.sheet_collections[collection_index].sheets[sheet_index].edit(index, record) {
+                    eprintln!("Failed to edit record in client cache: Index out of bounds");
+                },
                 Ok(Err(error)) => self.error_msg = format!("[Server response] failed to edit record: {}", error),
                 Err(error)     => self.error_msg = format!("Async task failed: {}", error),
             }
@@ -247,10 +248,12 @@ impl eframe::App for EasyMoneyManager {
 
         let remove_finished = self.remove_record_task.as_ref().is_some_and(|(_, _, _, task)| task.is_finished());
         if remove_finished {
-            let (collection_index, sheet_index, index, task) = self.remove_record_task.take().unwrap();
+            let (collection_index, sheet_index, index, task) = self.remove_record_task.take().expect("remove_task should exist when it's mared as finished");
 
             match self.runtime.block_on(task) {
-                Ok(Ok(()))     => self.sheet_collections[collection_index].sheets[sheet_index].remove(index).unwrap(),
+                Ok(Ok(()))     => if let Err(SheetError::IndexOutOfBounds) = self.sheet_collections[collection_index].sheets[sheet_index].remove(index) {
+                    eprintln!("Failed to remove record from client cache: Index out of bounds");
+                },
                 Ok(Err(error)) => self.error_msg = format!("[Server response] failed to remove record: {}", error),
                 Err(error)     => self.error_msg = format!("Async task failed: {}", error),
             }

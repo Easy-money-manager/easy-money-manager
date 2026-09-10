@@ -9,6 +9,7 @@ use crate::sheetcollection::SheetCollection;
 //struct GetRecordsRequest {
 //}
 
+#[allow(dead_code)]
 #[derive(Serialize, Deserialize)]
 pub struct GetRecordsResponse {
     pub records: Vec<Record>,

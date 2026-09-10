@@ -1,6 +1,5 @@
-use crate::record::Record;
 use crate::sheetcollection::SheetCollection;
-use crate::requests::{ GetRecordsResponse, CreateRecordRequest, CreateRecordResponse, UpdateRecordRequest, BootstrapResponse };
+use crate::requests::{ /*GetRecordsResponse,*/ CreateRecordRequest, CreateRecordResponse, UpdateRecordRequest, BootstrapResponse };
 
 #[derive(Clone)]
 pub struct ApiClient {
@@ -15,7 +14,7 @@ impl ApiClient {
             client: reqwest::Client::new(),
         }
     }
-    pub async fn get_records(&self, sheet_id: i64) -> Result<Vec<Record>, reqwest::Error> {
+/*    pub async fn get_records(&self, sheet_id: i64) -> Result<Vec<Record>, reqwest::Error> {
         let url = format!("{}/records/sheet/{}", self.base_url, sheet_id);
 
         let response = self.client.get(url).send().await?;
@@ -23,7 +22,7 @@ impl ApiClient {
         let response = response.json::<GetRecordsResponse>().await?;
 
         Ok(response.records)
-    }
+    }*/
     pub async fn create_record(&self, sheet_id: i64, request: &CreateRecordRequest) -> Result<i64, reqwest::Error> {
         let url = format!("{}/records/sheet/{}", self.base_url, sheet_id);
 

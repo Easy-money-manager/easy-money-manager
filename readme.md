@@ -10,4 +10,5 @@ Todo:
  - [x] compiles
  - [x] runs
  - [x] unit tests passed
- - [ ] logic tests passed
+ - [x] logic tests passed
+ - [ ] grip strenght tests passed

@@ -75,7 +75,7 @@ impl Default for Record {
     }
 }
 
-#[allow(dead_code, unused_assignments)]
+#[allow(dead_code)]
 impl Record {
     pub fn parse_value(value_zl: &str, value_gr: &str) -> Result<i64, ValueError> {
         let zl = if value_zl.is_empty() { 0 } else {
@@ -99,6 +99,7 @@ impl Record {
         if gr.abs() >= 100 { return Err(ValueError::TooBigGr); }
         Ok(zl * 100 + gr)
     }
+    #[allow(unused_assignments)]
     pub fn from_input(description: &str, year: &i32, month: &u32, day: &u32, value_zl: &str, value_gr: &str) -> Result<Self, RecordError> {
         if description.trim().is_empty() {
             return Err(RecordError::EmptyDescription);

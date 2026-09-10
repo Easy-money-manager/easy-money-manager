@@ -1,16 +1,3 @@
 [build]
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Easy Money Manager</title>
-</head>
-
-<body>
-	<canvas id="the_canvas_id"></canvas>
-</body>
-</html>
 target = "index.html"
 dist = "dist"

@@ -34,6 +34,7 @@ pub struct Sheet {
     }
 }*/
 
+#[allow(dead_code)]
 impl Sheet {
     pub fn new(id: i64, name: &str, fraction: i64) -> Self {
         Self {
@@ -47,7 +48,6 @@ impl Sheet {
     pub fn id(&self) -> i64 {
         self.id
     }
-    #[allow(dead_code)]
     pub fn id_set(&mut self, id: i64) {
         self.id = id;
     }

@@ -104,13 +104,31 @@ async fn get_bootstrap(State(state): State<AppState>) -> Result<Json<BootstrapRe
         }
     };
 
-    let mut collections = database.get_collections().unwrap();
+    let mut collections = match database.get_collections() {
+        Ok(collections) => collections,
+        Err(error)      => {
+            eprintln!("Failed to get bootstrap collections from database: {}", error);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
 
     for collection in &mut collections {
-        collection.sheets = database.get_sheets(collection.id()).unwrap();
+        collection.sheets = match database.get_sheets(collection.id()) {
+            Ok(sheet)  => sheet,
+            Err(error) => {
+                eprintln!("Failed to get bootstrap sheets from database: {}", error);
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        };
 
         for sheet in &mut collection.sheets {
-            sheet.records = database.get_records(sheet.id()).unwrap();
+            sheet.records = match database.get_records(sheet.id()) {
+                Ok(records) => records,
+                Err(error)  => {
+                    eprintln!("Failed to get bootstrap records from database: {}", error);
+                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
+                }
+            };
         }
     }
 
@@ -133,7 +151,7 @@ fn bootstrap_router() -> Router<AppState> {
     Router::new().route("/bootstrap", get(get_bootstrap))
 }
 
-pub async fn run() {
+pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let database = Database::new("easy_money_manager.db").expect("Failed to initialize database");
     match database.initialize() {
         Ok(())     => eprintln!("Initialized database"),
@@ -150,7 +168,9 @@ pub async fn run() {
         .merge(bootstrap_router())
         .with_state(state);
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await.unwrap();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
 
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app).await?;
+
+    Ok(())
 }

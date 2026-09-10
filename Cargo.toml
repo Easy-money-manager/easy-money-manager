@@ -25,5 +25,10 @@ wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["HtmlCanvasElement"] }
 wasm-bindgen = "0.2"
 
-[target.x86_64-pc-windows-gnu]
-linker = "/usr/bin/x86_64-w64-mingw32-gcc"
+#[target.x86_64-pc-windows-gnu]
+#linker = "/usr/bin/x86_64-w64-mingw32-gcc"
+
+[features]
+default = ["client"]
+client = []
+server = []
