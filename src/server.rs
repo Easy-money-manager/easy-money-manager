@@ -3,6 +3,7 @@ use serde::Serialize;
 use std::sync::{ Arc, Mutex};
 use crate::database::Database;
 use crate::requests::{ GetRecordsResponse, CreateRecordRequest, CreateRecordResponse, UpdateRecordRequest, BootstrapResponse };
+use tower_http::cors::{ Any, CorsLayer };
 
 #[derive(Serialize)]
 struct TestResponse {
@@ -162,11 +163,14 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         database: Arc::new(Mutex::new(database)),
     };
 
+    let cors = CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any);
+
     let app = Router::new()
         .route("/", get(test))
         .merge(records_router())
         .merge(bootstrap_router())
-        .with_state(state);
+        .with_state(state)
+        .layer(cors);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
 

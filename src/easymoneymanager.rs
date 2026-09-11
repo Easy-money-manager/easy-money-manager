@@ -4,13 +4,14 @@ use crate::sheet::SheetError;
 use crate::api::ApiClient;
 use eframe::egui;
 use crate::requests::{ CreateRecordRequest, UpdateRecordRequest };
-use tokio::task::JoinHandle;
+use crate::clienttask::/*{*/ ClientTask; //, ClientTaskError };
 
 // EasyMoneyManager
 //
 // description, day, month, year, values - variables to add / update records in sheets
 // sheets - array with sheets
 // active_sheet - variable with info on which sheet you currently are
+
 
 pub struct EasyMoneyManager {
     pub description: String,
@@ -26,26 +27,27 @@ pub struct EasyMoneyManager {
 
     pub api_client: ApiClient,
     pub bootstrap_loaded: bool,
-    pub bootstrap_task: Option<JoinHandle<Result<Vec<SheetCollection>, reqwest::Error>>>,
+    pub bootstrap_task: Option<ClientTask<Result<Vec<SheetCollection>, reqwest::Error>>>,
     pub create_record_task: Option<(
         usize,
         usize,
         Record,
-        JoinHandle<Result<i64, reqwest::Error>>
+        ClientTask<Result<i64, reqwest::Error>>
     )>,
     pub update_record_task: Option<(
         usize,
         usize,
         usize,
         Record,
-        JoinHandle<Result<(), reqwest::Error>>,
+        ClientTask<Result<(), reqwest::Error>>,
     )>,
     pub remove_record_task: Option< (
         usize,
         usize,
         usize,
-        JoinHandle<Result<(), reqwest::Error>>,
+        ClientTask<Result<(), reqwest::Error>>,
     )>,
+    #[cfg(not(target_arch = "wasm32"))]
     runtime: tokio::runtime::Runtime,
 }
 impl Default for EasyMoneyManager {
@@ -67,6 +69,7 @@ impl Default for EasyMoneyManager {
             create_record_task: None,
             update_record_task: None,
             remove_record_task: None,
+            #[cfg(not(target_arch = "wasm32"))]
             runtime: tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime"),
         }
     }
@@ -93,14 +96,28 @@ impl EasyMoneyManager {
         &mut self.sheet_collections[collection_index]
     }
 
-    pub fn load_bootstrap(&mut self) {
+    pub fn start_bootstrap(&mut self) {
         let api_client = self.api_client.clone();
 
-        self.bootstrap_task = Some(
-            self.runtime.spawn(async move {
-                api_client.get_bootstrap().await
-            })
-        );
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.bootstrap_task = Some(
+                ClientTask::spawn(
+                    &self.runtime,
+                    async move {
+                        api_client.get_bootstrap().await
+                    }
+                )
+            );
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.bootstrap_task = Some(
+                ClientTask::spawn(async move {
+                    api_client.get_bootstrap().await
+                })
+            );
+        }
     }
     pub fn add_record(&mut self) {
         let record = match Record::from_input(
@@ -128,14 +145,28 @@ impl EasyMoneyManager {
             value: record.value(),
         };
 
-        self.create_record_task = Some((
-            collection_index,
-            sheet_index,
-            record,
-            self.runtime.spawn(async move {
-                api_client.create_record(sheet_id, &request).await
-            })
-        ));
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.create_record_task = Some((
+                    collection_index,
+                    sheet_index,
+                    record,
+                    ClientTask::spawn(
+                        &self.runtime,
+                        async move { api_client.create_record(sheet_id, &request).await }
+                    )
+            ));
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.create_record_task = Some((
+                    collection_index,
+                    sheet_index,
+                    record,
+                    ClientTask::spawn(async move { api_client.create_record(sheet_id, &request).await }
+                    )
+            ));
+        }
     }
     pub fn edit_record(&mut self, index: usize) {
         let mut record = match Record::from_input(
@@ -192,14 +223,18 @@ impl eframe::App for EasyMoneyManager {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame,) {
 
         if !self.bootstrap_loaded && self.bootstrap_task.is_none() {
-            self.load_bootstrap();
+            self.start_bootstrap();
         }
 
         let bootstrap_finished = self.bootstrap_task.as_ref().is_some_and(|task| task.is_finished());
         if bootstrap_finished {
             let task = self.bootstrap_task.take().expect("bootstrap_task should exist when it's mared as finished");
+            #[cfg(not(target_arch = "wasm32"))]
+            let result = task.take(&self.runtime);
+            #[cfg(target_arch = "wasm32")]
+            let result = task.take();
 
-            match self.runtime.block_on(task) {
+            match result {
                 Ok(Ok(collections)) => {
                     self.sheet_collections = collections;
                     self.bootstrap_loaded = true;
@@ -221,8 +256,12 @@ impl eframe::App for EasyMoneyManager {
         let create_finished = self.create_record_task.as_ref().is_some_and(|(_, _, _, task)| task.is_finished());
         if create_finished {
             let (collection_index, sheet_index, mut record, task) = self.create_record_task.take().expect("create_record_task should exist when it's mared as finished");
+            #[cfg(not(target_arch = "wasm32"))]
+            let result = task.take(&self.runtime);
+            #[cfg(target_arch = "wasm32")]
+            let result = task.take();
 
-            match self.runtime.block_on(task) {
+            match result {
                 Ok(Ok(id)) => {
                     record.id_set(id);
                     self.sheet_collections[collection_index].sheets[sheet_index].push(record);

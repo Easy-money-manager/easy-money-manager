@@ -6,6 +6,7 @@ mod record;
 mod sheet;
 mod sheetcollection;
 mod requests;
+mod clienttask;
 #[cfg(feature = "client")]
 mod easymoneymanager;
 #[cfg(feature = "client")]
