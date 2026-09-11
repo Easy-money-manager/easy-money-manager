@@ -359,12 +359,10 @@ impl eframe::App for EasyMoneyManager {
                                 if ui.button(&sheet.name).clicked() {
                                     selected_sheet = Some(index);
                                 }
-                                if self.active_collection == 0 {
-                                    if index == 0 {
-                                        ui.label(sheet.sum_display());
-                                    } else {
-                                        ui.label(sheet.balance_display(&self.sheet_collections[0].sheets[0].sum()));
-                                    }
+                                if index == 0 || self.active_collection == 1 {
+                                    ui.label(sheet.sum_display());
+                                } else {
+                                    ui.label(sheet.balance_display(&self.sheet_collections[0].sheets[0].sum()));
                                 }
                             });
                         }
