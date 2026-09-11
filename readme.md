@@ -12,3 +12,4 @@ Todo:
  - [x] unit tests passed
  - [x] logic tests passed
  - [ ] grip strenght tests passed
+ - [ ] mental stability tests passed
