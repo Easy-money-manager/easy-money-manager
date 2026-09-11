@@ -24,11 +24,11 @@ impl ApiClient {
         Ok(response.records)
     }*/
     pub async fn create_record(&self, sheet_id: i64, request: &CreateRecordRequest) -> Result<i64, reqwest::Error> {
-        let url = format!("{}/records/sheet/{}", self.base_url, sheet_id);
+        let url: String= format!("{}/records/sheet/{}", self.base_url, sheet_id);
 
         let response = self.client.post(url).json(request).send().await?;
 
-        let response = response.json::<CreateRecordResponse>().await?;
+        let response: CreateRecordResponse = response.json::<CreateRecordResponse>().await?;
 
         Ok(response.id)
     }

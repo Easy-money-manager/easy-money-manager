@@ -1,15 +1,17 @@
-//use tokio::task::JoinHandle;
+use tokio::task::{ JoinHandle, JoinError };
+#[cfg(target_arch = "wasm32")]
+use std::rc::{ Rc, RC };
 
 pub enum ClientTaskError {
     #[cfg(not(target_arch = "wasm32"))]
-    Join(tokio::task::JoinError),
+    Join(JoinError),
 
     NotReady
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 pub struct ClientTask<T> {
-    handle: tokio::task::JoinHandle<T>
+    handle: JoinHandle<T>
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -34,14 +36,14 @@ impl<T: Send + 'static> ClientTask<T> {
 
 #[cfg(target_arch = "wasm32")]
 pub struct ClientTask<T> {
-    result: std::rc::RC<std::cell::RefCell<Option<T>>>,
+    result: RC<std::cell::RefCell<Option<T>>>,
 }
 #[cfg(target_arch = "wasm32")]
 impl<T: 'static> ClientTask<T> {
     pub fn spawn(future: impl std::future::Future<Output = T> + 'static) -> Self {
-        let result = std::rc::Rc::new(std::cell::RefCell::new(None));
+        let result: Rc = Rc::new(std::cell::RefCell::new(None));
 
-        let task_result = result.clone();
+        let task_result: Rc = result.clone();
 
         wasm_bindgen_futures::Spawn_local(async move {
             let value = future.await;

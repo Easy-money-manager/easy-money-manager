@@ -20,7 +20,9 @@ impl Database {
             "
             CREATE TABLE IF NOT EXISTS collections (
                 id INTEGER PRIMARY KEY,
-                name TEXT NOT NULL
+                name TEXT NOT NULL,
+
+                UNIQUE(id, name)
             );
 
             CREATE TABLE IF NOT EXISTS sheets (
@@ -28,6 +30,8 @@ impl Database {
                 collection_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
                 fraction INTEGER NOT NULL,
+
+                UNIQUE(collection_id, name),
 
                 FOREIGN KEY (collection_id)
                     REFERENCES collections(id)
@@ -40,12 +44,23 @@ impl Database {
                 date TEXT NOT NULL,
                 value INTEGER NOT NULL,
 
+                UNIQUE(id),
+
                 FOREIGN KEY (sheet_id)
                     REFERENCES sheets(id)
             );
             ",
-        )?;
-        Ok(())
+            )?;
+            let main_id:i64 = self.get_or_create_collection("Main")?;
+            self.get_or_create_sheet(main_id, "Incomes", 100)?;
+            self.get_or_create_sheet(main_id, "Essentials", 50)?;
+            self.get_or_create_sheet(main_id, "Stability", 15)?;
+            self.get_or_create_sheet(main_id, "Growth", 25)?;
+            self.get_or_create_sheet(main_id, "Prizes", 10)?;
+            let planning_id: i64 = self.get_or_create_collection("Planning")?;
+            self.get_or_create_sheet(planning_id, "Incomes", 100)?;
+            self.get_or_create_sheet(planning_id, "Expenses", 100)?;
+            Ok(())
     }
 
     pub fn get_collections(&self) -> rusqlite::Result<Vec<SheetCollection>> {

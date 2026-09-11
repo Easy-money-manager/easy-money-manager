@@ -196,13 +196,29 @@ impl EasyMoneyManager {
         };
         let api_client = self.api_client.clone();
 
-        self.update_record_task = Some((
-            collection_index,
-            sheet_index,
-            index,
-            record,
-            self.runtime.spawn(async move { api_client.update_record(record_id, &request).await } )
-        ));
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.update_record_task = Some((
+                    collection_index,
+                    sheet_index,
+                    index,
+                    record,
+                    ClientTask::spawn(
+                        &self.runtime,
+                        async move { api_client.update_record(record_id, &request).await }
+                    )
+            ));
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.update_record_task = Some((
+                    collection_index,
+                    sheet_index,
+                    index,
+                    record,
+                    Clienttask::spawn(async move { api_client.update_record(record_id, &request).await } )
+            ));
+        }
     }
     pub fn remove_record(&mut self, index: usize) {
         let api_client = self.api_client.clone();
@@ -210,12 +226,27 @@ impl EasyMoneyManager {
         let sheet_index: usize = self.active_collection().active_sheet_index();
         let record_id = self.active_collection().active_sheet().records[index].id();
 
-        self.remove_record_task = Some((
-            collection_index,
-            sheet_index,
-            index,
-            self.runtime.spawn(async move { api_client.remove_record(record_id).await } )
-        ));
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.remove_record_task = Some((
+                    collection_index,
+                    sheet_index,
+                    index,
+                    ClientTask::spawn(
+                        &self.runtime,
+                        async move { api_client.remove_record(record_id).await }
+                    )
+            ));
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.remove_record_task = Some((
+                    collection_index,
+                    sheet_index,
+                    index,
+                    ClientTask::spawn(async move { api_client.remove_record(record_id).await } )
+            ));
+        }
     }
 }
 
@@ -238,13 +269,13 @@ impl eframe::App for EasyMoneyManager {
                 Ok(Ok(collections)) => {
                     self.sheet_collections = collections;
                     self.bootstrap_loaded = true;
+                    eprintln!("Bootstrap loaded... technically");
                     self.error_msg.clear();
                 }
                 Ok(Err(error)) => self.error_msg = format!("Failed to load application: {}", error),
-                Err(error)     => self.error_msg = format!("Async task failed: {}", error),
+                Err(_error)     => self.error_msg = format!("Async task failed"),
             }
         }
-
         if !self.bootstrap_loaded {
             egui::CentralPanel::default().show(ctx, |ui| {
                 ui.heading("Waiting for server to bootstrap data");
@@ -268,33 +299,41 @@ impl eframe::App for EasyMoneyManager {
                     self.error_msg.clear();
                 }
                 Ok(Err(error)) => self.error_msg = format!("[Server response] failed to create record: {}", error),
-                Err(error)     => self.error_msg = format!("Async task failed: {}", error),
+                Err(_error)     => self.error_msg = format!("Async task failed"),
             }
         }
 
         let update_finished = self.update_record_task.as_ref().is_some_and(|(_, _, _, _, task)| task.is_finished());
         if update_finished {
             let (collection_index, sheet_index, index, record, task) = self.update_record_task.take().expect("update_record_task should exist when it's mared as finished");
+            #[cfg(not(target_arch = "wasm32"))]
+            let result = task.take(&self.runtime);
+            #[cfg(target_arch = "wasm32")]
+            let result = task.take();
 
-            match self.runtime.block_on(task) {
+            match result {
                 Ok(Ok(()))     => if let Err(SheetError::IndexOutOfBounds) = self.sheet_collections[collection_index].sheets[sheet_index].edit(index, record) {
                     eprintln!("Failed to edit record in client cache: Index out of bounds");
                 },
                 Ok(Err(error)) => self.error_msg = format!("[Server response] failed to edit record: {}", error),
-                Err(error)     => self.error_msg = format!("Async task failed: {}", error),
+                Err(_error)     => self.error_msg = format!("Async task failed"),
             }
         }
 
         let remove_finished = self.remove_record_task.as_ref().is_some_and(|(_, _, _, task)| task.is_finished());
         if remove_finished {
             let (collection_index, sheet_index, index, task) = self.remove_record_task.take().expect("remove_task should exist when it's mared as finished");
+            #[cfg(not(target_arch = "wasm32"))]
+            let result = task.take(&self.runtime);
+            #[cfg(target_arch = "wasm32")]
+            let result = task.take();
 
-            match self.runtime.block_on(task) {
+            match result {
                 Ok(Ok(()))     => if let Err(SheetError::IndexOutOfBounds) = self.sheet_collections[collection_index].sheets[sheet_index].remove(index) {
                     eprintln!("Failed to remove record from client cache: Index out of bounds");
                 },
                 Ok(Err(error)) => self.error_msg = format!("[Server response] failed to remove record: {}", error),
-                Err(error)     => self.error_msg = format!("Async task failed: {}", error),
+                Err(_error)     => self.error_msg = format!("Async task failed"),
             }
         }
 
