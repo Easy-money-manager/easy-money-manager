@@ -52,14 +52,14 @@ impl Database {
             ",
             )?;
             let main_id:i64 = self.get_or_create_collection("Main")?;
-            self.get_or_create_sheet(main_id, "Incomes", 100)?;
-            self.get_or_create_sheet(main_id, "Essentials", 50)?;
-            self.get_or_create_sheet(main_id, "Stability", 15)?;
-            self.get_or_create_sheet(main_id, "Growth", 25)?;
-            self.get_or_create_sheet(main_id, "Prizes", 10)?;
+            let _incomes_id = self.get_or_create_sheet(main_id, "Incomes", 100)?;
+            let _essentials_id = self.get_or_create_sheet(main_id, "Essentials", 50)?;
+            let _stability_id = self.get_or_create_sheet(main_id, "Stability", 15)?;
+            let _growth_id = self.get_or_create_sheet(main_id, "Growth", 25)?;
+            let _prizes_id = self.get_or_create_sheet(main_id, "Prizes", 10)?;
             let planning_id: i64 = self.get_or_create_collection("Planning")?;
-            self.get_or_create_sheet(planning_id, "Incomes", 100)?;
-            self.get_or_create_sheet(planning_id, "Expenses", 100)?;
+            let _incomes_id = self.get_or_create_sheet(planning_id, "Incomes", 100)?;
+            let _expenses_id = self.get_or_create_sheet(planning_id, "Expenses", 100)?;
             Ok(())
     }
 
