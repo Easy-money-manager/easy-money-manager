@@ -847,6 +847,7 @@ dependencies = [
  "axum",
  "chrono",
  "eframe",
+ "emm-shared",
  "poll-promise",
  "reqwest",
  "rusqlite",
@@ -988,6 +989,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "491bdf728bf25ddd9ad60d4cf1c48588fa82c013a2440b91aa7fc43e34a07c32"
 dependencies = [
  "bytemuck",
+]
+
+[[package]]
+name = "emm-shared"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
 ]
 
 [[package]]

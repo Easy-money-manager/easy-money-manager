@@ -1,9 +1,9 @@
-use crate::record::Record;
-use crate::sheetcollection::SheetCollection;
-use crate::sheet::SheetError;
+use emm_shared::record::Record;
+use emm_shared::sheetcollection::SheetCollection;
+use emm_shared::sheet::SheetError;
 use crate::api::ApiClient;
 use eframe::egui;
-use crate::requests::{ CreateRecordRequest, UpdateRecordRequest };
+use emm_shared::request::{ CreateRecordRequest, UpdateRecordRequest };
 use crate::clienttask::/*{*/ ClientTask; //, ClientTaskError };
 
 // EasyMoneyManager

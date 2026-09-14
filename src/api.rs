@@ -1,5 +1,5 @@
-use crate::sheetcollection::SheetCollection;
-use crate::requests::{ /*GetRecordsResponse,*/ CreateRecordRequest, CreateRecordResponse, UpdateRecordRequest, BootstrapResponse };
+use emm_shared::sheetcollection::SheetCollection;
+use emm_shared::request::{ /*GetRecordsResponse,*/ CreateRecordRequest, CreateRecordResponse, UpdateRecordRequest, BootstrapResponse };
 
 #[derive(Clone)]
 pub struct ApiClient {

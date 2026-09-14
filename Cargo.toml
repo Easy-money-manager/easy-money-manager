@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+emm-shared = { path = "../emm-shared" }
 chrono = { version = "0.4", features = ["serde"] }
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
@@ -32,4 +33,3 @@ wasm-bindgen = "0.2"
 [features]
 default = ["client"]
 client = []
-server = []

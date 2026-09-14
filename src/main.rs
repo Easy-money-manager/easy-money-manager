@@ -1,23 +1,11 @@
-#[cfg(feature = "server")]
-mod server;
-#[cfg(feature = "server")]
-mod database;
-mod record;
-mod sheet;
-mod sheetcollection;
-mod requests;
 mod clienttask;
-#[cfg(feature = "client")]
 mod easymoneymanager;
-#[cfg(feature = "client")]
 mod api;
-#[cfg(feature = "client")]
 use easymoneymanager::EasyMoneyManager;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
 
-#[cfg(feature = "client")]
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions::default();
@@ -29,7 +17,6 @@ fn main() -> eframe::Result {
     )
 }
 
-#[cfg(feature = "client")]
 #[cfg(target_arch = "wasm32")]
 fn main() -> eframe::Result {
     let options = eframe::WebOptions::default();
@@ -59,12 +46,4 @@ fn main() -> eframe::Result {
     });
 
     Ok(())
-}
-
-#[cfg(feature = "server")]
-#[tokio::main]
-async fn main() {
-    if let Err(error) = server::run().await {
-        eprintln!("Server failed to start: {}", error);
-    }
 }
