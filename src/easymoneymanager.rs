@@ -130,7 +130,7 @@ impl EasyMoneyManager {
         ) {
             Ok(record) => record, 
             Err(error) => {
-                self.log_error(format!("Failed parsing record to add: {}", error));
+                self.log_error(&format!("Failed parsing record to add: {}", error.message()));
                 return;
             },
         };
@@ -179,7 +179,7 @@ impl EasyMoneyManager {
         ) {
             Ok(record) => record, 
             Err(error) => {
-                self.log_error(format!("Failed parsing record to edit"));
+                self.log_error(&format!("Failed parsing record to edit: {}", error.message()));
                 return;
             },
         };
