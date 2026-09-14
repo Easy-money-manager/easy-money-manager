@@ -186,8 +186,7 @@ impl EasyMoneyManager {
 
         let collection_index: usize = self.active_collection;
         let sheet_index: usize = self.active_collection().active_sheet_index();
-        record.id_set(self.active_collection().active_sheet().records[index].id());
-        let record_id: i64 = record.id();
+        let record_id: i64 = self.active_collection().active_sheet().records[index].id();
 
         let request = UpdateRecordRequest {
             description: record.description().to_string(),
