@@ -130,7 +130,7 @@ impl EasyMoneyManager {
         ) {
             Ok(record) => record, 
             Err(error) => {
-                self.error_msg = error.message().to_string();
+                self.log_error(format!("Failed parsing record to add: {}", error));
                 return;
             },
         };
@@ -169,7 +169,7 @@ impl EasyMoneyManager {
         }
     }
     pub fn edit_record(&mut self, index: usize) {
-        let mut record = match Record::from_input(
+        let record = match Record::from_input(
             &self.description,
             &self.year,
             &self.month,
@@ -179,7 +179,7 @@ impl EasyMoneyManager {
         ) {
             Ok(record) => record, 
             Err(error) => {
-                self.error_msg = error.message().to_string();
+                self.log_error(format!("Failed parsing record to edit"));
                 return;
             },
         };
@@ -247,6 +247,14 @@ impl EasyMoneyManager {
             ));
         }
     }
+    pub fn log(&mut self, message: &str) {
+        println!("[EMM LOG]: {}", message);
+        self.error_msg = message.to_string();
+    }
+    pub fn log_error(&mut self, message: &str) {
+        eprintln!("[EMM ERROR]: {}", message);
+        self.error_msg = message.to_string();
+    }
 }
 
 impl eframe::App for EasyMoneyManager {
@@ -268,11 +276,11 @@ impl eframe::App for EasyMoneyManager {
                 Ok(Ok(collections)) => {
                     self.sheet_collections = collections;
                     self.bootstrap_loaded = true;
-                    eprintln!("Bootstrap loaded... technically");
+                    self.log(&format!("Bootstrap loaded... technically"));
                     self.error_msg.clear();
                 }
-                Ok(Err(error)) => self.error_msg = format!("Failed to load application: {}", error),
-                Err(_error)     => self.error_msg = format!("Async task failed"),
+                Ok(Err(error)) => self.log_error(&format!("Failed to load application: {}", error)),
+                Err(_error)     => self.log_error(&format!("Async task failed")),
             }
         }
         if !self.bootstrap_loaded {
@@ -297,8 +305,8 @@ impl eframe::App for EasyMoneyManager {
                     self.sheet_collections[collection_index].sheets[sheet_index].push(record);
                     self.error_msg.clear();
                 }
-                Ok(Err(error)) => self.error_msg = format!("[Server response] failed to create record: {}", error),
-                Err(_error)     => self.error_msg = format!("Async task failed"),
+                Ok(Err(error)) => self.log_error(&format!("[Server response]: Failed to create record: {}", error)),
+                Err(_error)    => self.log_error(&format!("Async task failed")),
             }
         }
 
@@ -311,11 +319,14 @@ impl eframe::App for EasyMoneyManager {
             let result = task.take();
 
             match result {
-                Ok(Ok(()))     => if let Err(SheetError::IndexOutOfBounds) = self.sheet_collections[collection_index].sheets[sheet_index].edit(index, record) {
-                    eprintln!("Failed to edit record in client cache: Index out of bounds");
-                },
-                Ok(Err(error)) => self.error_msg = format!("[Server response] failed to edit record: {}", error),
-                Err(_error)     => self.error_msg = format!("Async task failed"),
+                Ok(Ok(()))     => {
+                    if let Err(SheetError::IndexOutOfBounds) = self.sheet_collections[collection_index].sheets[sheet_index].edit(index, record) {
+                        self.log_error(&"Failed to edit record in client cache: Index out of bounds");
+                    }
+                    self.error_msg.clear();
+                }
+                Ok(Err(error)) => self.log_error(&format!("[Server response] failed to edit record: {}", error)),
+                Err(_error)    => self.log_error(&format!("Async task failed")),
             }
         }
 
@@ -328,11 +339,14 @@ impl eframe::App for EasyMoneyManager {
             let result = task.take();
 
             match result {
-                Ok(Ok(()))     => if let Err(SheetError::IndexOutOfBounds) = self.sheet_collections[collection_index].sheets[sheet_index].remove(index) {
-                    eprintln!("Failed to remove record from client cache: Index out of bounds");
-                },
-                Ok(Err(error)) => self.error_msg = format!("[Server response] failed to remove record: {}", error),
-                Err(_error)     => self.error_msg = format!("Async task failed"),
+                Ok(Ok(()))     => {
+                    if let Err(SheetError::IndexOutOfBounds) = self.sheet_collections[collection_index].sheets[sheet_index].remove(index) {
+                        self.log_error(&"Failed to remove record from client cache: Index out of bounds");
+                    }
+                    self.error_msg.clear();
+                }
+                Ok(Err(error)) => self.log_error(&format!("[Server response] failed to remove record: {}", error)),
+                Err(_error)    => self.log_error(&format!("Async task failed")),
             }
         }
 
