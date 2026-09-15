@@ -1,5 +1,6 @@
 use emm_shared::sheetcollection::SheetCollection;
-use emm_shared::request::{ /*GetRecordsResponse,*/ CreateRecordRequest, CreateRecordResponse, UpdateRecordRequest, BootstrapResponse };
+use emm_shared::request::{ CreateRecordRequest,  UpdateRecordRequest };
+use emm_shared::response::{ CreateRecordResponse, BootstrapResponse }
 
 #[derive(Clone)]
 pub struct ApiClient {
