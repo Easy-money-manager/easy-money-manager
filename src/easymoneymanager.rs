@@ -12,8 +12,21 @@ use crate::clienttask::/*{*/ ClientTask; //, ClientTaskError };
 // sheets - array with sheets
 // active_sheet - variable with info on which sheet you currently are
 
+pub struct UserSession {
+    pub user_id: i64,
+    pub username: String,
+    pub session_token: String,
+}
+
+pub enum AuthState {
+    LoggedOut,
+    LoggingIn,
+    LoggedIn(UserSession),
+}
 
 pub struct EasyMoneyManager {
+    pub username_input: String,
+    pub passwork_input: String,
     pub description: String,
     pub day: u32,
     pub month: u32,
@@ -26,6 +39,8 @@ pub struct EasyMoneyManager {
     pub active_collection: usize,
 
     pub api_client: ApiClient,
+    pub auth_state: AuthState,
+    pub login_task: Option<ClientTask<Result<LoginResponse, reqwest::Error>>>,
     pub bootstrap_loaded: bool,
     pub bootstrap_task: Option<ClientTask<Result<Vec<SheetCollection>, reqwest::Error>>>,
     pub create_record_task: Option<(
@@ -64,6 +79,8 @@ impl Default for EasyMoneyManager {
             sheet_collections: Vec::new(),
             active_collection: 0,
             api_client: ApiClient::new("http://127.0.0.1:3000".to_string()),
+            auth_state: AuthState::LoggedOut,
+            login_task: None
             bootstrap_task: None,
             bootstrap_loaded: false,
             create_record_task: None,
@@ -94,6 +111,14 @@ impl EasyMoneyManager {
     pub fn active_collection_mut(&mut self) -> &mut SheetCollection {
         let collection_index = self.active_collection;
         &mut self.sheet_collections[collection_index]
+    }
+
+    fn start_login(&self) {
+    }
+    fn start_register(&self) {
+    }
+
+    fn handle_login_task(&mut self) {
     }
 
     pub fn start_bootstrap(&mut self) {
@@ -247,23 +272,20 @@ impl EasyMoneyManager {
             ));
         }
     }
-    pub fn log(&mut self, message: &str) {
+    fn log(&mut self, message: &str) {
         println!("[EMM LOG]: {}", message);
         self.error_msg = message.to_string();
     }
-    pub fn log_error(&mut self, message: &str) {
+    fn log_error(&mut self, message: &str) {
         eprintln!("[EMM ERROR]: {}", message);
         self.error_msg = message.to_string();
     }
-}
 
-impl eframe::App for EasyMoneyManager {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame,) {
+    fn main_ui(&mut self, ctx: &egui::Context) {
 
         if !self.bootstrap_loaded && self.bootstrap_task.is_none() {
             self.start_bootstrap();
         }
-
         let bootstrap_finished = self.bootstrap_task.as_ref().is_some_and(|task| task.is_finished());
         if bootstrap_finished {
             let task = self.bootstrap_task.take().expect("bootstrap_task should exist when it's mared as finished");
@@ -271,7 +293,6 @@ impl eframe::App for EasyMoneyManager {
             let result = task.take(&self.runtime);
             #[cfg(target_arch = "wasm32")]
             let result = task.take();
-
             match result {
                 Ok(Ok(collections)) => {
                     self.sheet_collections = collections;
@@ -298,7 +319,6 @@ impl eframe::App for EasyMoneyManager {
             let result = task.take(&self.runtime);
             #[cfg(target_arch = "wasm32")]
             let result = task.take();
-
             match result {
                 Ok(Ok(id)) => {
                     record.id_set(id);
@@ -317,7 +337,6 @@ impl eframe::App for EasyMoneyManager {
             let result = task.take(&self.runtime);
             #[cfg(target_arch = "wasm32")]
             let result = task.take();
-
             match result {
                 Ok(Ok(()))     => {
                     if let Err(SheetError::IndexOutOfBounds) = self.sheet_collections[collection_index].sheets[sheet_index].edit(index, record) {
@@ -337,7 +356,6 @@ impl eframe::App for EasyMoneyManager {
             let result = task.take(&self.runtime);
             #[cfg(target_arch = "wasm32")]
             let result = task.take();
-
             match result {
                 Ok(Ok(()))     => {
                     if let Err(SheetError::IndexOutOfBounds) = self.sheet_collections[collection_index].sheets[sheet_index].remove(index) {
@@ -349,7 +367,6 @@ impl eframe::App for EasyMoneyManager {
                 Err(_error)    => self.log_error(&format!("Async task failed")),
             }
         }
-
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("My sheets app");
@@ -467,5 +484,51 @@ impl eframe::App for EasyMoneyManager {
                 });
             });
         });
+    }
+    fn login_ui(&mut self, ctx: &egui::Context) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.vertical_centered(|ui {
+                ui.heading("Easy Money Manager");
+                ui.add_space(20.0);
+
+                ui.label("Username");
+                ui.text_edit_singleline(&mut self.username_input);
+
+                ui.label("Password");
+                ui.add(egui::TestEdit::singleline(&mut self.password_input).password(true));
+
+                if ui.button("Login").clicked() {
+                    self.start_login();
+                }
+
+                if ui.button("Register").cicked() {
+                    self.start_register();
+                }
+
+                if !self.error_msg.is_empty() {
+                    ui.label(&self.error_msg);
+                }
+            });
+        });
+    }
+    fn logging_ui(&mut self, ctx: &egui::Context) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.vertical_centered(|ui| {
+                ui.add_space(100.0);
+                ui.spinner();
+                ui.label("Logging in...");
+            }
+        });
+    }
+}
+
+impl eframe::App for EasyMoneyManager {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame,) {
+        match self.auth_state {
+            self.handle_login_task();
+            AuthState::LoggedOut   => login_ui(ctx),
+            AuthState::LoggingIn   => logging_ui(ctx),
+            AuthState::LoggedIn(_) => main_ui(ctx),
+        }
     }
 }
