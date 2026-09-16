@@ -135,6 +135,7 @@ impl EasyMoneyManager {
         }
     }
 
+    // Auth tasks{{{
     fn register(&mut self) {
         let request: RegisterRequest = RegisterRequest {
             username: self.username_input.clone(),
@@ -320,7 +321,9 @@ impl EasyMoneyManager {
             }
         }
     }
+    // }}}
 
+    // Content tasks {{{
     pub fn start_bootstrap(&mut self) {
         let api_client = self.api_client.clone();
         let session_token: String = match self.session_token_clone() {
@@ -488,87 +491,85 @@ impl EasyMoneyManager {
             ));
         }
     }
-    fn log(&mut self, message: &str) {
-        println!("[EMM LOG]: {}", message);
-        self.error_msg = Some(message.to_string());
-    }
-    fn log_error(&mut self, message: &str) {
-        eprintln!("[EMM ERROR]: {}", message);
-        self.error_msg = Some(message.to_string());
-    }
-
-    fn main_ui(&mut self, ctx: &egui::Context) {
-
-        if !self.bootstrap_loaded && self.bootstrap_task.is_none() {
-            self.start_bootstrap();
-        }
-        let bootstrap_finished = self.bootstrap_task.as_ref().is_some_and(|task| task.is_finished());
-        if bootstrap_finished {
-            let task = self.bootstrap_task.take().expect("bootstrap_task should exist when it's mared as finished");
-            #[cfg(not(target_arch = "wasm32"))]
-            let result = task.take(&self.runtime);
-            #[cfg(target_arch = "wasm32")]
-            let result = task.take();
-            match result {
-                Ok(Ok(collections)) => {
-                    self.sheet_collections = collections;
-                    self.bootstrap_loaded = true;
-                    self.log(&format!("Bootstrap loaded"));
-                    self.error_msg = None;
-                }
-                Ok(Err(error)) => self.log_error(&format!("Failed to load application: {}", error)),
-                Err(_error)     => self.log_error(&format!("Async task failed")),
-            }
-        }
-        if !self.bootstrap_loaded {
-            egui::CentralPanel::default().show(ctx, |ui| {
-                ui.heading("Waiting for server to bootstrap data");
-                if let Some(error) = &self.error_msg {
-                    ui.label(error);
-                }
-            });
+    fn handle_bootstrap_task(&mut self) {
+        let finished: bool = match &self.bootstrap_task {
+            Some(task) => task.is_finished(),
+            None       => false,
+        };
+        if !finished {
             return;
         }
-
-        let create_finished = self.create_record_task.as_ref().is_some_and(|(_, _, _, task)| task.is_finished());
-        if create_finished {
-            let (collection_index, sheet_index, mut record, task) = self.create_record_task.take().expect("create_record_task should exist when it's mared as finished");
-            #[cfg(not(target_arch = "wasm32"))]
-            let result = task.take(&self.runtime);
-            #[cfg(target_arch = "wasm32")]
-            let result = task.take();
-            match result {
-                Ok(Ok(id)) => {
-                    record.id_set(id);
-                    self.sheet_collections[collection_index].sheets[sheet_index].push(record);
-                    self.error_msg = None;
-                }
-                Ok(Err(error)) => self.log_error(&format!("[Server response]: Failed to create record: {}", error)),
-                Err(_error)    => self.log_error(&format!("Async task failed")),
+        let task = self.bootstrap_task.take().expect("bootstrap_task should exist when it's mared as finished");
+        #[cfg(not(target_arch = "wasm32"))]
+        let result = task.take(&self.runtime);
+        #[cfg(target_arch = "wasm32")]
+        let result = task.take();
+        match result {
+            Ok(Ok(collections)) => {
+                self.sheet_collections = collections;
+                self.bootstrap_loaded = true;
+                self.log(&format!("Bootstrap loaded"));
+                self.error_msg = None;
             }
+            Ok(Err(error)) => self.log_error(&format!("Failed to load application: {}", error)),
+            Err(_error)     => self.log_error(&format!("Async task failed")),
         }
-
-        let update_finished = self.update_record_task.as_ref().is_some_and(|(_, _, _, _, task)| task.is_finished());
-        if update_finished {
-            let (collection_index, sheet_index, index, record, task) = self.update_record_task.take().expect("update_record_task should exist when it's mared as finished");
-            #[cfg(not(target_arch = "wasm32"))]
-            let result = task.take(&self.runtime);
-            #[cfg(target_arch = "wasm32")]
-            let result = task.take();
-            match result {
-                Ok(Ok(()))     => {
-                    if let Err(SheetError::IndexOutOfBounds) = self.sheet_collections[collection_index].sheets[sheet_index].edit(index, record) {
-                        self.log_error(&"Failed to edit record in client cache: Index out of bounds");
-                    }
-                    self.error_msg = None;
-                }
-                Ok(Err(error)) => self.log_error(&format!("[Server response] failed to edit record: {}", error)),
-                Err(_error)    => self.log_error(&format!("Async task failed")),
+    }
+    fn handle_create_task(&mut self) {
+        let finished: bool = match &self.create_record_task {
+            Some((_, _, _, task)) => task.is_finished(),
+            None                  => false,
+        };
+        if !finished {
+            return;
+        }
+        let (collection_index, sheet_index, mut record, task) = self.create_record_task.take().expect("create_record_task should exist when it's mared as finished");
+        #[cfg(not(target_arch = "wasm32"))]
+        let result = task.take(&self.runtime);
+        #[cfg(target_arch = "wasm32")]
+        let result = task.take();
+        match result {
+            Ok(Ok(id)) => {
+                record.id_set(id);
+                self.sheet_collections[collection_index].sheets[sheet_index].push(record);
+                self.error_msg = None;
             }
+            Ok(Err(error)) => self.log_error(&format!("[Server response]: Failed to create record: {}", error)),
+            Err(_error)    => self.log_error(&format!("Async task failed")),
         }
-
-        let remove_finished = self.remove_record_task.as_ref().is_some_and(|(_, _, _, task)| task.is_finished());
-        if remove_finished {
+    }
+    fn handle_edit_task(&mut self) {
+        let finished = match &self.update_record_task {
+            Some((_, _, _, _, task)) => task.is_finished(),
+            None                     => false,
+        };
+        if !finished {
+            return;
+        }
+        let (collection_index, sheet_index, index, record, task) = self.update_record_task.take().expect("update_record_task should exist when it's mared as finished");
+        #[cfg(not(target_arch = "wasm32"))]
+        let result = task.take(&self.runtime);
+        #[cfg(target_arch = "wasm32")]
+        let result = task.take();
+        match result {
+            Ok(Ok(()))     => {
+                if let Err(SheetError::IndexOutOfBounds) = self.sheet_collections[collection_index].sheets[sheet_index].edit(index, record) {
+                    self.log_error(&"Failed to edit record in client cache: Index out of bounds");
+                }
+                self.error_msg = None;
+            }
+            Ok(Err(error)) => self.log_error(&format!("[Server response] failed to edit record: {}", error)),
+            Err(_error)    => self.log_error(&format!("Async task failed")),
+        }
+    }
+    fn handle_remove_task(&mut self) {
+        let finished: bool = match &self.remove_record_task {
+            Some((_, _, _, task)) => task.is_finished(),
+            None                  => false,
+        };
+        if !finished {
+            return;
+        }
             let (collection_index, sheet_index, index, task) = self.remove_record_task.take().expect("remove_task should exist when it's mared as finished");
             #[cfg(not(target_arch = "wasm32"))]
             let result = task.take(&self.runtime);
@@ -583,9 +584,36 @@ impl EasyMoneyManager {
                 }
                 Ok(Err(error)) => self.log_error(&format!("[Server response] failed to remove record: {}", error)),
                 Err(_error)    => self.log_error(&format!("Async task failed")),
-            }
         }
 
+    }
+    // }}}
+
+    fn log(&mut self, message: &str) {
+        println!("[EMM LOG]: {}", message);
+        self.error_msg = Some(message.to_string());
+    }
+    fn log_error(&mut self, message: &str) {
+        eprintln!("[EMM ERROR]: {}", message);
+        self.error_msg = Some(message.to_string());
+    }
+
+    fn main_ui(&mut self, ctx: &egui::Context) {
+
+        self.handle_bootstrap_task();
+        if !self.bootstrap_loaded {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                ui.heading("Waiting for server to bootstrap data");
+                if let Some(error) = &self.error_msg {
+                    ui.label(error);
+                }
+            });
+            return;
+        }
+
+        self.handle_create_task();
+        self.handle_edit_task();
+        self.handle_remove_task();
         self.handle_logout_task();
         egui::CentralPanel::default().show(ctx, |ui| {
             let available_width: f32 = ui.available_width();
