@@ -194,10 +194,36 @@ impl EasyMoneyManager {
         }
         self.auth_state = AuthState::LoggingIn;
     }
+    fn logout(&mut self) {
+        let api_client: ApiClient = self.api_client.clone();
+        let session_token: String = match self.session_token_clone() {
+            Some(session_token) => session_token,
+            None => panic!(),
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.logout_task = Some(
+                ClientTask::spawn(
+                    &self.runtime,
+                    async move {
+                        api_client.logout(&session_token).await
+                    }
+                )
+            );
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.logout_task = Some(
+                async move {
+                    api_client.logout(&session_token).await
+                }
+            );
+        }
+    }
 
     fn handle_register_task(&mut self) {
         let finished: bool = match &self.register_task {
-            Some(task) => task.is_finished(),
             Some(task) => task.is_finished(),
             None       => false,
         };
@@ -214,8 +240,14 @@ impl EasyMoneyManager {
         let result = task.take();
         match result {
             Ok(Ok(()))     => self.auth_error = Some("Account created succesfully, you may log in now!".to_string()),
-            Ok(Err(error)) => self.auth_error = Some(format!("Registration failed: {}", error)),
-            Err(error)     => self.auth_error = Some(format!("Registration task failed: {}", error)),
+            Ok(Err(error)) => {
+                self.auth_error = Some("Registration failed, probably name already in use\nPossibly server may be down".to_string());
+                self.log_error(&format!("Registration failed: {}", error));
+            }
+            Err(error)     => {
+                self.auth_error = Some("Registration failed die to server issue, sorry!".to_string());
+                self.log_error(&format!("Registration task failed: {}", error));
+            }
         };
     }
     fn handle_login_task(&mut self) {
@@ -248,11 +280,43 @@ impl EasyMoneyManager {
             }
             Ok(Err(error)) => {
                 self.auth_state = AuthState::LoggedOut;
-                self.auth_error = Some(format!("Login failed: {}", error));
+                self.auth_error = Some("Username or password is incorrect\nPossibly server may be down".to_string());
+                self.log_error(&format!("Login failed: {}", error))
             }
             Err(error)     => {
                 self.auth_state = AuthState::LoggedOut;
-                self.auth_error = Some(format!("Login task failed: {}", error));
+                self.auth_error = Some("Login failed due to server issue, sorry!".to_string());
+                self.log_error(&format!("Login task failed: {}", error))
+            }
+        }
+    }
+    fn handle_logout_task(&mut self) {
+        let finished: bool = match &self.logout_task {
+            Some(task) => task.is_finished(),
+            None       => false,
+        };
+        if !finished {
+            return;
+        }
+        let task = match self.logout_task.take() {
+            Some(task) => task,
+            None       => return,
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        let result = task.take(&self.runtime);
+        #[cfg(target_arch = "wasm32")]
+        let result = task.take();
+        match result {
+            Ok(Ok(())) => {
+                self.auth_state = AuthState::LoggedOut;
+                self.log(&"Logged out successfully".to_string());
+                self.auth_error = Some("Logged out successfully".to_string());
+            }
+            Ok(Err(error)) => {
+                self.log(&format!("Couldn't log out: {}", error));
+            }
+            Err(error) => {
+                self.log_error(&format!("Couldn't log out: {}", error));
             }
         }
     }
@@ -522,8 +586,27 @@ impl EasyMoneyManager {
             }
         }
 
+        self.handle_logout_task();
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("My sheets app");
+            let available_width: f32 = ui.available_width();
+            ui.horizontal(|ui| {
+                let heading_width: f32 = 200.0;
+                let button_width: f32 = 80.0;
+                ui.allocate_space(egui::vec2((available_width - heading_width) / 2.0 - button_width, 0.0));
+                ui.add_sized(
+                    [heading_width, 30.0],
+                    egui::Label::new(egui::RichText::new("Easy Money Manager").heading()).halign(egui::Align::Center),
+                );
+                ui.with_layout(
+                    egui::Layout::right_to_left(egui::Align::Center),
+                    |ui| {
+                        if ui.button("Log Out").clicked() {
+                            self.logout();
+                        }
+                    }
+                );
+            });
+
             ui.separator();
 
             ui.horizontal(|ui| {
@@ -643,6 +726,7 @@ impl EasyMoneyManager {
     }
     fn login_ui(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
+            self.handle_register_task();
             ui.vertical_centered(|ui| {
                 ui.heading("Easy Money Manager");
                 ui.add_space(20.0);
@@ -661,7 +745,7 @@ impl EasyMoneyManager {
                     self.register();
                 }
 
-                if let Some(ref msg) = self.auth_error {
+                if let Some(msg) = &self.auth_error {
                     ui.label(msg);
                 }
             });
