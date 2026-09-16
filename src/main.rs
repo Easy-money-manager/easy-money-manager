@@ -13,7 +13,7 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Easy Money Manager",
         options,
-        Box::new(|_cc| Ok(Box::new(EasyMoneyManager::default()))),
+        Box::new(|cc| Ok(Box::new(EasyMoneyManager::new(cc)))),
     )
 }
 
