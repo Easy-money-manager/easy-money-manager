@@ -938,6 +938,7 @@ dependencies = [
 [[package]]
 name = "emm-shared"
 version = "0.1.0"
+source = "git+https://github.com/Easy-money-manager/emm-shared.git?branch=main#c3d01ddaf14397f172c0370ae9e264f85a2d589f"
 dependencies = [
  "chrono",
  "serde",
