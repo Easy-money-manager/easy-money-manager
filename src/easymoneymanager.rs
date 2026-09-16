@@ -216,9 +216,9 @@ impl EasyMoneyManager {
         #[cfg(target_arch = "wasm32")]
         {
             self.logout_task = Some(
-                async move {
+                ClientTask::spawn(async move {
                     api_client.logout(&session_token).await
-                }
+                })
             );
         }
     }
