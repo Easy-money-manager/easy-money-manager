@@ -559,8 +559,11 @@ impl EasyMoneyManager {
                         session_token: response.session_token,
                     }
                 );
+                self.sheet_collections = response.bootstrap.collections;
+                self.bootstrap_loaded = true;
+                self.log(&format!("Bootstrap loaded"));
+                self.error_msg = None;
                 self.auth_error = None;
-                self.start_bootstrap();
             }
             Ok(Err(error)) => {
                 self.auth_state = AuthState::LoggedOut;
