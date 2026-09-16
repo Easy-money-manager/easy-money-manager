@@ -196,10 +196,14 @@ impl EasyMoneyManager {
     }
 
     fn handle_register_task(&mut self) {
-        let _finished: bool = match &self.register_task {
+        let finished: bool = match &self.register_task {
             Some(task) => task.is_finished(),
-            None       => return,
+            Some(task) => task.is_finished(),
+            None       => false,
         };
+        if !finished {
+            return;
+        }
         let task = match self.register_task.take() {
             Some(task) => task,
             None       => return,
@@ -215,10 +219,13 @@ impl EasyMoneyManager {
         };
     }
     fn handle_login_task(&mut self) {
-        let _finished: bool = match &self.login_task {
+        let finished: bool = match &self.login_task {
             Some(task) => task.is_finished(),
-            None       => return,
+            None       => false,
         };
+        if !finished {
+            return;
+        }
         let task = match self.login_task.take() {
             Some(task) => task,
             None       => return,
@@ -239,8 +246,14 @@ impl EasyMoneyManager {
                 self.auth_error = None;
                 self.start_bootstrap();
             }
-            Ok(Err(error)) => self.auth_error = Some(format!("Login failed: {}", error)),
-            Err(error)     => self.auth_error = Some(format!("Login task failed: {}", error)),
+            Ok(Err(error)) => {
+                self.auth_state = AuthState::LoggedOut;
+                self.auth_error = Some(format!("Login failed: {}", error));
+            }
+            Err(error)     => {
+                self.auth_state = AuthState::LoggedOut;
+                self.auth_error = Some(format!("Login task failed: {}", error));
+            }
         }
     }
 
@@ -375,7 +388,7 @@ impl EasyMoneyManager {
                     sheet_index,
                     index,
                     record,
-                    Clienttask::spawn(async move { api_client.update_record(&session_token, record_id, &request).await } )
+                    ClientTask::spawn(async move { api_client.update_record(&session_token, record_id, &request).await } )
             ));
         }
     }
@@ -648,7 +661,7 @@ impl EasyMoneyManager {
                     self.register();
                 }
 
-                if let Some(ref msg) = self.error_msg {
+                if let Some(ref msg) = self.auth_error {
                     ui.label(msg);
                 }
             });

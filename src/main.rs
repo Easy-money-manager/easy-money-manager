@@ -37,7 +37,7 @@ fn main() -> eframe::Result {
             .start(
                 canvas,
                 options,
-                Box::new(|cc| {
+                Box::new(|_cc| {
                     Ok(Box::new(EasyMoneyManager::default()))
                 }),
             )
