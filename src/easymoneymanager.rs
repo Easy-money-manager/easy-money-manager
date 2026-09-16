@@ -986,9 +986,9 @@ impl EasyMoneyManager {
 
                         ui.label("Value\t");
                         ui.horizontal(|ui| {
-                            ui.add(egui::TextEdit::singleline(&mut self.value_zl).desired_width(50.0));
+                            ui.add(egui::TextEdit::singleline(&mut self.value_zl).desired_width(100.0));
                             ui.label(".");
-                            ui.add(egui::TextEdit::singleline(&mut self.value_gr).desired_width(15.0));
+                            ui.add(egui::TextEdit::singleline(&mut self.value_gr).desired_width(30.0));
                         });
                         ui.end_row();
 
