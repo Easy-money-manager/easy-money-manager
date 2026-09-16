@@ -1,12 +1,32 @@
 use tokio::task::{ JoinHandle, JoinError };
 #[cfg(target_arch = "wasm32")]
 use std::rc::{ Rc, RC };
+use std::fmt;
 
+#[derive(Debug)]
 pub enum ClientTaskError {
     #[cfg(not(target_arch = "wasm32"))]
     Join(JoinError),
 
     NotReady
+}
+
+impl fmt::Display for ClientTaskError {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        match self {
+            ClientTaskError::NotReady => {
+                write!(f, "Task is not ready yet")
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            ClientTaskError::Join(error) => {
+                write!(f, "Task failed to join: {}", error)
+            }
+        }
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

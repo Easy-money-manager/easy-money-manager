@@ -3,7 +3,8 @@ use emm_shared::sheetcollection::SheetCollection;
 use emm_shared::sheet::SheetError;
 use crate::api::ApiClient;
 use eframe::egui;
-use emm_shared::request::{ CreateRecordRequest, UpdateRecordRequest };
+use emm_shared::request::{ RegisterRequest, LoginRequest, CreateRecordRequest, UpdateRecordRequest };
+use emm_shared::response::{ LoginResponse };
 use crate::clienttask::/*{*/ ClientTask; //, ClientTaskError };
 
 // EasyMoneyManager
@@ -26,14 +27,15 @@ pub enum AuthState {
 
 pub struct EasyMoneyManager {
     pub username_input: String,
-    pub passwork_input: String,
+    pub password_input: String,
     pub description: String,
     pub day: u32,
     pub month: u32,
     pub year: i32,
     pub value_zl: String,
     pub value_gr: String,
-    pub error_msg: String,
+    pub error_msg: Option<String>,
+    pub auth_error: Option<String>,
 
     pub sheet_collections: Vec<SheetCollection>,
     pub active_collection: usize,
@@ -41,6 +43,8 @@ pub struct EasyMoneyManager {
     pub api_client: ApiClient,
     pub auth_state: AuthState,
     pub login_task: Option<ClientTask<Result<LoginResponse, reqwest::Error>>>,
+    pub register_task: Option<ClientTask<Result<(), reqwest::Error>>>,
+    pub logout_task: Option<ClientTask<Result<(), reqwest::Error>>>,
     pub bootstrap_loaded: bool,
     pub bootstrap_task: Option<ClientTask<Result<Vec<SheetCollection>, reqwest::Error>>>,
     pub create_record_task: Option<(
@@ -68,19 +72,25 @@ pub struct EasyMoneyManager {
 impl Default for EasyMoneyManager {
     fn default() -> Self {
         Self {
+            username_input: String::new(),
+            password_input: String::new(),
+
             description: String::new(),
             day: 0,
             month: 0,
             year: 0,
             value_zl: String::new(),
             value_gr: String::new(),
-            error_msg: String::new(),
+            error_msg: None,
+            auth_error: None,
 
             sheet_collections: Vec::new(),
             active_collection: 0,
             api_client: ApiClient::new("http://127.0.0.1:3000".to_string()),
             auth_state: AuthState::LoggedOut,
-            login_task: None
+            register_task: None,
+            login_task: None,
+            logout_task: None,
             bootstrap_task: None,
             bootstrap_loaded: false,
             create_record_task: None,
@@ -112,17 +122,134 @@ impl EasyMoneyManager {
         let collection_index = self.active_collection;
         &mut self.sheet_collections[collection_index]
     }
-
-    fn start_login(&self) {
+    fn session_token(&self) -> Option<&str> {
+        match &self.auth_state {
+            AuthState::LoggedIn(session) => Some(&session.session_token),
+            _ => None,
+        }
     }
-    fn start_register(&self) {
+    fn session_token_clone(&self) -> Option<String> {
+        match &self.auth_state {
+            AuthState::LoggedIn(session) => Some(session.session_token.clone()),
+            _ => None,
+        }
     }
 
+    fn register(&mut self) {
+        let request: RegisterRequest = RegisterRequest {
+            username: self.username_input.clone(),
+            password: self.password_input.clone(),
+        };
+        let api_client: ApiClient = self.api_client.clone();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.register_task = Some(
+                ClientTask::spawn(
+                    &self.runtime,
+                    async move {
+                        api_client.register(&request).await
+                    }
+                )
+            );
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.register_task = Some(
+                ClientTask::spawn(
+                    async move {
+                        api_client.register(&request).await
+                    }
+                )
+            );
+        }
+    }
+    fn login(&mut self) {
+        let request: LoginRequest = LoginRequest {
+            username: self.username_input.clone(),
+            password: self.password_input.clone(),
+        };
+        let api_client: ApiClient = self.api_client.clone();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.login_task = Some(
+                ClientTask::spawn(
+                    &self.runtime,
+                    async move {
+                        api_client.login(&request).await
+                    }
+                )
+            );
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.login_task = Some(
+                ClientTask::spawn(
+                    async move {
+                        api_client.login(&request).await
+                    }
+                )
+            );
+        }
+        self.auth_state = AuthState::LoggingIn;
+    }
+
+    fn handle_register_task(&mut self) {
+        let _finished: bool = match &self.register_task {
+            Some(task) => task.is_finished(),
+            None       => return,
+        };
+        let task = match self.register_task.take() {
+            Some(task) => task,
+            None       => return,
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        let result = task.take(&self.runtime);
+        #[cfg(target_arch = "wasm32")]
+        let result = task.take();
+        match result {
+            Ok(Ok(()))     => self.auth_error = Some("Account created succesfully, you may log in now!".to_string()),
+            Ok(Err(error)) => self.auth_error = Some(format!("Registration failed: {}", error)),
+            Err(error)     => self.auth_error = Some(format!("Registration task failed: {}", error)),
+        };
+    }
     fn handle_login_task(&mut self) {
+        let _finished: bool = match &self.login_task {
+            Some(task) => task.is_finished(),
+            None       => return,
+        };
+        let task = match self.login_task.take() {
+            Some(task) => task,
+            None       => return,
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        let result = task.take(&self.runtime);
+        #[cfg(target_arch = "wasm32")]
+        let result = task.take();
+        match result {
+            Ok(Ok(response)) => {
+                self.auth_state = AuthState::LoggedIn (
+                    UserSession {
+                        user_id: response.user_id,
+                        username: response.username,
+                        session_token: response.session_token,
+                    }
+                );
+                self.auth_error = None;
+                self.start_bootstrap();
+            }
+            Ok(Err(error)) => self.auth_error = Some(format!("Login failed: {}", error)),
+            Err(error)     => self.auth_error = Some(format!("Login task failed: {}", error)),
+        }
     }
 
     pub fn start_bootstrap(&mut self) {
         let api_client = self.api_client.clone();
+        let session_token: String = match self.session_token_clone() {
+            Some(session_token) => session_token,
+            None => panic!(),
+        };
 
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -130,7 +257,7 @@ impl EasyMoneyManager {
                 ClientTask::spawn(
                     &self.runtime,
                     async move {
-                        api_client.get_bootstrap().await
+                        api_client.get_bootstrap(&session_token).await
                     }
                 )
             );
@@ -139,7 +266,7 @@ impl EasyMoneyManager {
         {
             self.bootstrap_task = Some(
                 ClientTask::spawn(async move {
-                    api_client.get_bootstrap().await
+                    api_client.get_bootstrap(&session_token).await
                 })
             );
         }
@@ -163,6 +290,10 @@ impl EasyMoneyManager {
         let sheet_index: usize = self.active_collection().active_sheet_index();
         let api_client = self.api_client.clone();
         let sheet_id = self.active_collection().active_sheet().id();
+        let session_token: String= match self.session_token_clone() {
+            Some(session_token) => session_token,
+            None => panic!(),
+        };
 
         let request: CreateRecordRequest = CreateRecordRequest {
             description: record.description().to_string(),
@@ -178,7 +309,7 @@ impl EasyMoneyManager {
                     record,
                     ClientTask::spawn(
                         &self.runtime,
-                        async move { api_client.create_record(sheet_id, &request).await }
+                        async move { api_client.create_record(&session_token, sheet_id, &request).await }
                     )
             ));
         }
@@ -188,7 +319,7 @@ impl EasyMoneyManager {
                     collection_index,
                     sheet_index,
                     record,
-                    ClientTask::spawn(async move { api_client.create_record(sheet_id, &request).await }
+                    ClientTask::spawn(async move { api_client.create_record(&session_token, sheet_id, &request).await }
                     )
             ));
         }
@@ -212,6 +343,10 @@ impl EasyMoneyManager {
         let collection_index: usize = self.active_collection;
         let sheet_index: usize = self.active_collection().active_sheet_index();
         let record_id: i64 = self.active_collection().active_sheet().records[index].id();
+        let session_token: String = match self.session_token_clone() {
+            Some(session_token) => session_token,
+            None => panic!(),
+        };
 
         let request = UpdateRecordRequest {
             description: record.description().to_string(),
@@ -229,7 +364,7 @@ impl EasyMoneyManager {
                     record,
                     ClientTask::spawn(
                         &self.runtime,
-                        async move { api_client.update_record(record_id, &request).await }
+                        async move { api_client.update_record(&session_token, record_id, &request).await }
                     )
             ));
         }
@@ -240,7 +375,7 @@ impl EasyMoneyManager {
                     sheet_index,
                     index,
                     record,
-                    Clienttask::spawn(async move { api_client.update_record(record_id, &request).await } )
+                    Clienttask::spawn(async move { api_client.update_record(&session_token, record_id, &request).await } )
             ));
         }
     }
@@ -249,6 +384,10 @@ impl EasyMoneyManager {
         let collection_index: usize = self.active_collection;
         let sheet_index: usize = self.active_collection().active_sheet_index();
         let record_id = self.active_collection().active_sheet().records[index].id();
+        let session_token: String = match self.session_token_clone() {
+            Some(session_token) => session_token,
+            None => panic!(),
+        };
 
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -258,7 +397,7 @@ impl EasyMoneyManager {
                     index,
                     ClientTask::spawn(
                         &self.runtime,
-                        async move { api_client.remove_record(record_id).await }
+                        async move { api_client.remove_record(&session_token, record_id).await }
                     )
             ));
         }
@@ -268,17 +407,17 @@ impl EasyMoneyManager {
                     collection_index,
                     sheet_index,
                     index,
-                    ClientTask::spawn(async move { api_client.remove_record(record_id).await } )
+                    ClientTask::spawn(async move { api_client.remove_record(&session_token, record_id).await } )
             ));
         }
     }
     fn log(&mut self, message: &str) {
         println!("[EMM LOG]: {}", message);
-        self.error_msg = message.to_string();
+        self.error_msg = Some(message.to_string());
     }
     fn log_error(&mut self, message: &str) {
         eprintln!("[EMM ERROR]: {}", message);
-        self.error_msg = message.to_string();
+        self.error_msg = Some(message.to_string());
     }
 
     fn main_ui(&mut self, ctx: &egui::Context) {
@@ -297,8 +436,8 @@ impl EasyMoneyManager {
                 Ok(Ok(collections)) => {
                     self.sheet_collections = collections;
                     self.bootstrap_loaded = true;
-                    self.log(&format!("Bootstrap loaded... technically"));
-                    self.error_msg.clear();
+                    self.log(&format!("Bootstrap loaded"));
+                    self.error_msg = None;
                 }
                 Ok(Err(error)) => self.log_error(&format!("Failed to load application: {}", error)),
                 Err(_error)     => self.log_error(&format!("Async task failed")),
@@ -307,7 +446,9 @@ impl EasyMoneyManager {
         if !self.bootstrap_loaded {
             egui::CentralPanel::default().show(ctx, |ui| {
                 ui.heading("Waiting for server to bootstrap data");
-                ui.label(&self.error_msg);
+                if let Some(error) = &self.error_msg {
+                    ui.label(error);
+                }
             });
             return;
         }
@@ -323,7 +464,7 @@ impl EasyMoneyManager {
                 Ok(Ok(id)) => {
                     record.id_set(id);
                     self.sheet_collections[collection_index].sheets[sheet_index].push(record);
-                    self.error_msg.clear();
+                    self.error_msg = None;
                 }
                 Ok(Err(error)) => self.log_error(&format!("[Server response]: Failed to create record: {}", error)),
                 Err(_error)    => self.log_error(&format!("Async task failed")),
@@ -342,7 +483,7 @@ impl EasyMoneyManager {
                     if let Err(SheetError::IndexOutOfBounds) = self.sheet_collections[collection_index].sheets[sheet_index].edit(index, record) {
                         self.log_error(&"Failed to edit record in client cache: Index out of bounds");
                     }
-                    self.error_msg.clear();
+                    self.error_msg = None;
                 }
                 Ok(Err(error)) => self.log_error(&format!("[Server response] failed to edit record: {}", error)),
                 Err(_error)    => self.log_error(&format!("Async task failed")),
@@ -361,7 +502,7 @@ impl EasyMoneyManager {
                     if let Err(SheetError::IndexOutOfBounds) = self.sheet_collections[collection_index].sheets[sheet_index].remove(index) {
                         self.log_error(&"Failed to remove record from client cache: Index out of bounds");
                     }
-                    self.error_msg.clear();
+                    self.error_msg = None;
                 }
                 Ok(Err(error)) => self.log_error(&format!("[Server response] failed to remove record: {}", error)),
                 Err(_error)    => self.log_error(&format!("Async task failed")),
@@ -446,7 +587,9 @@ impl EasyMoneyManager {
                     if ui.button("Add record").clicked() {
                         self.add_record();
                     }
-                    ui.label(&self.error_msg);
+                    if let Some(error) = &self.error_msg {
+                        ui.label(error);
+                    }
 
                     ui.heading(&self.active_collection().active_sheet().name);
                     let mut remove_index = None;
@@ -487,7 +630,7 @@ impl EasyMoneyManager {
     }
     fn login_ui(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.vertical_centered(|ui {
+            ui.vertical_centered(|ui| {
                 ui.heading("Easy Money Manager");
                 ui.add_space(20.0);
 
@@ -495,29 +638,30 @@ impl EasyMoneyManager {
                 ui.text_edit_singleline(&mut self.username_input);
 
                 ui.label("Password");
-                ui.add(egui::TestEdit::singleline(&mut self.password_input).password(true));
+                ui.add(egui::TextEdit::singleline(&mut self.password_input).password(true));
 
                 if ui.button("Login").clicked() {
-                    self.start_login();
+                    self.login();
                 }
 
-                if ui.button("Register").cicked() {
-                    self.start_register();
+                if ui.button("Register").clicked() {
+                    self.register();
                 }
 
-                if !self.error_msg.is_empty() {
-                    ui.label(&self.error_msg);
+                if let Some(ref msg) = self.error_msg {
+                    ui.label(msg);
                 }
             });
         });
     }
     fn logging_ui(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
+            self.handle_login_task();
             ui.vertical_centered(|ui| {
                 ui.add_space(100.0);
                 ui.spinner();
                 ui.label("Logging in...");
-            }
+            });
         });
     }
 }
@@ -525,10 +669,9 @@ impl EasyMoneyManager {
 impl eframe::App for EasyMoneyManager {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame,) {
         match self.auth_state {
-            self.handle_login_task();
-            AuthState::LoggedOut   => login_ui(ctx),
-            AuthState::LoggingIn   => logging_ui(ctx),
-            AuthState::LoggedIn(_) => main_ui(ctx),
+            AuthState::LoggedOut   => self.login_ui(ctx),
+            AuthState::LoggingIn   => self.logging_ui(ctx),
+            AuthState::LoggedIn(_) => self.main_ui(ctx),
         }
     }
 }
