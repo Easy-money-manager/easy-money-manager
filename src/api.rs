@@ -9,9 +9,12 @@ pub struct ApiClient {
 }
 
 impl ApiClient {
-    pub fn new(base_url: String) -> Self {
+    pub fn new() -> Self {
         Self {
-            base_url: base_url,
+            #[cfg(debug_assertions)]
+            base_url: "http://127.0.0.1:3000".to_string(),
+            #[cfg(not(debug_assertions))]
+            base_url: "https://api.easy-money-manager.com".to_string(),
             client: reqwest::Client::new(),
         }
     }

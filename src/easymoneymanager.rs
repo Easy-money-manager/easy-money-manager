@@ -86,7 +86,7 @@ impl Default for EasyMoneyManager {
 
             sheet_collections: Vec::new(),
             active_collection: 0,
-            api_client: ApiClient::new("http://127.0.0.1:3000".to_string()),
+            api_client: ApiClient::new(),
             auth_state: AuthState::LoggedOut,
             register_task: None,
             login_task: None,

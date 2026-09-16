@@ -1,6 +1,5 @@
 #[cfg(not(target_arch = "wasm32"))]
 use tokio::task::{ JoinHandle, JoinError };
-use std::future::Future;
 #[cfg(target_arch = "wasm32")]
 use std::{ rc::Rc, cell::RefCell };
 use std::fmt;
