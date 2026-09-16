@@ -20,6 +20,39 @@ pub struct UserSession {
     pub session_token: String,
 }
 
+struct Theme;
+
+impl Theme {
+    const BACKGROUND: egui::Color32 =
+        egui::Color32::from_rgb(10, 12, 11);
+
+    const CARD: egui::Color32 =
+        egui::Color32::from_rgb(18, 22, 20);
+
+    const CARD_HOVER: egui::Color32 =
+        egui::Color32::from_rgb(24, 30, 27);
+
+    const TEXT: egui::Color32 =
+        egui::Color32::from_rgb(245, 245, 245);
+
+    const MUTED: egui::Color32 =
+        egui::Color32::from_rgb(170, 170, 170);
+
+    const GOLD: egui::Color32 =
+        egui::Color32::from_rgb(220, 180, 80);
+
+    const GREEN: egui::Color32 =
+        egui::Color32::from_rgb(30, 160, 100);
+
+    fn border() -> egui::Color32 {
+        egui::Color32::from_rgba_unmultiplied(255, 255, 255, 20)
+    }
+
+    fn gold_border() -> egui::Color32 {
+        egui::Color32::from_rgba_unmultiplied(220, 180, 80, 90)
+    }
+}
+
 pub enum AuthState {
     LoggedOut,
     LoggingIn,
@@ -134,9 +167,24 @@ impl EasyMoneyManager {
             ),
             ]
                 .into();
+        style.visuals.widgets.inactive.weak_bg_fill = Theme::CARD;
+        style.visuals.widgets.inactive.bg_fill = Theme::CARD;
+        style.visuals.widgets.inactive.bg_stroke = egui::Stroke::new(1.0, Theme::border());
+        style.visuals.widgets.hovered.bg_stroke = egui::Stroke::new(1.0, Theme::gold_border());
+        style.visuals.widgets.hovered.weak_bg_fill = Theme::CARD_HOVER;
+        style.visuals.widgets.hovered.bg_fill = Theme::CARD_HOVER;
+        style.visuals.widgets.hovered.bg_stroke = egui::Stroke::new(1.0, Theme::GOLD);
+        style.visuals.widgets.active.weak_bg_fill = Theme::CARD_HOVER;
+        style.visuals.widgets.active.bg_fill = Theme::CARD_HOVER;
+        style.visuals.widgets.active.bg_stroke = egui::Stroke::new(1.0, Theme::GOLD);
         style.spacing.item_spacing = egui::vec2(14.0, 12.0);
         style.spacing.button_padding = egui::vec2(18.0, 12.0);
         style.spacing.interact_size = egui::vec2(48.0, 34.0);
+        style.visuals.widgets.open.weak_bg_fill = Theme::CARD_HOVER;
+        style.visuals.widgets.open.bg_fill = Theme::CARD_HOVER;
+        style.visuals.widgets.open.bg_stroke = egui::Stroke::new(1.0, Theme::GOLD);
+        style.spacing.button_padding = egui::vec2(18.0, 10.0);
+        style.spacing.interact_size = egui::vec2(44.0, 36.0);
         let background = egui::Color32::from_rgb(10, 12, 11);      // #0a0c0b
         let card = egui::Color32::from_rgb(18, 22, 20);            // #121614
         let card_hover = egui::Color32::from_rgb(24, 30, 27);      // #181e1b

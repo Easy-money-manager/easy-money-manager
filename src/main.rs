@@ -37,8 +37,8 @@ fn main() -> eframe::Result {
             .start(
                 canvas,
                 options,
-                Box::new(|_cc| {
-                    Ok(Box::new(EasyMoneyManager::default()))
+                Box::new(|cc| {
+                    Ok(Box::new(EasyMoneyManager::new(cc)))
                 }),
             )
             .await
