@@ -142,7 +142,7 @@ impl EasyMoneyManager {
         Self::default()
     }
     fn configure_style(ctx: &egui::Context) {
-        let mut style: egui::Style = (*ctx.style()).clone();
+        let mut style: egui::Style = (*ctx.style_of(egui::Theme::Dark)).clone();
 
         style.text_styles = [
             (
@@ -242,7 +242,7 @@ impl EasyMoneyManager {
         style.spacing.item_spacing = egui::vec2(12.0, 10.0);
         style.spacing.button_padding = egui::vec2(14.0, 10.0);
 
-        ctx.set_style(style);
+        ctx.set_style_of(egui::Theme::Dark, style);
     }
     fn glow(
         painter: &egui::Painter,
@@ -346,9 +346,9 @@ impl EasyMoneyManager {
             x += spacing;
         }
     }
-    fn paint_background(ctx: &egui::Context) {
-        let painter = ctx.layer_painter(egui::LayerId::background());
-        let rect = ctx.screen_rect();
+    fn paint_background(ui: &mut egui::Ui) {
+        let rect: egui::Rect = ui.max_rect();
+        let painter: &egui::Painter = ui.painter();
 
         painter.rect_filled(
             rect,
@@ -884,11 +884,11 @@ impl EasyMoneyManager {
         self.error_msg = Some(message.to_string());
     }
 
-    fn main_ui(&mut self, ctx: &egui::Context) {
+    fn main_ui(&mut self, ui: &mut egui::Ui) {
 
         self.handle_bootstrap_task();
         if !self.bootstrap_loaded {
-            egui::CentralPanel::default().show(ctx, |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
                 ui.heading("Waiting for server to bootstrap data");
                 if let Some(error) = &self.error_msg {
                     ui.label(error);
@@ -901,7 +901,7 @@ impl EasyMoneyManager {
         self.handle_edit_task();
         self.handle_remove_task();
         self.handle_logout_task();
-        egui::CentralPanel::default().frame(egui::Frame::new().fill(egui::Color32::TRANSPARENT)).show(ctx, |ui| {
+        egui::CentralPanel::default().frame(egui::Frame::new().fill(egui::Color32::TRANSPARENT)).show(ui, |ui| {
             let available_width: f32 = ui.available_width();
             ui.horizontal(|ui| {
                 let heading_width: f32 = 200.0;
@@ -1038,8 +1038,8 @@ impl EasyMoneyManager {
             });
         });
     }
-    fn login_ui(&mut self, ctx: &egui::Context) {
-        egui::CentralPanel::default().frame(egui::Frame::new().fill(egui::Color32::TRANSPARENT)).show(ctx, |ui| {
+    fn login_ui(&mut self, ui: &mut egui::Ui) {
+        egui::CentralPanel::default().frame(egui::Frame::new().fill(egui::Color32::TRANSPARENT)).show(ui, |ui| {
             ui.vertical_centered(|ui| {
                 ui.add_space(80.0);
 
@@ -1060,19 +1060,12 @@ impl EasyMoneyManager {
                         ui.set_width(320.0);
 
                         ui.label("Username");
-                        ui.text_edit_singleline(
-                            &mut self.username_input
-                        );
+                        ui.text_edit_singleline(&mut self.username_input);
 
                         ui.add_space(10.0);
 
                         ui.label("Password");
-                        ui.add(
-                            egui::TextEdit::singleline(
-                                &mut self.password_input
-                            )
-                            .password(true)
-                        );
+                        ui.add(egui::TextEdit::singleline(&mut self.password_input).password(true));
 
                         ui.add_space(16.0);
 
@@ -1117,8 +1110,8 @@ impl EasyMoneyManager {
             });
         });*/
     }
-    fn logging_ui(&mut self, ctx: &egui::Context) {
-        egui::CentralPanel::default().frame(egui::Frame::new().fill(egui::Color32::TRANSPARENT)).show(ctx, |ui| {
+    fn logging_ui(&mut self, ui: &mut egui::Ui) {
+        egui::CentralPanel::default().frame(egui::Frame::new().fill(egui::Color32::TRANSPARENT)).show(ui, |ui| {
             self.handle_login_task();
             ui.vertical_centered(|ui| {
                 ui.add_space(100.0);
@@ -1130,12 +1123,13 @@ impl EasyMoneyManager {
 }
 
 impl eframe::App for EasyMoneyManager {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame,) {
-        Self::paint_background(ctx);
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx: egui::Context = ui.ctx().clone();
+        Self::paint_background(ui);
         match self.auth_state {
-            AuthState::LoggedOut   => self.login_ui(ctx),
-            AuthState::LoggingIn   => self.logging_ui(ctx),
-            AuthState::LoggedIn(_) => self.main_ui(ctx),
+            AuthState::LoggedOut   => self.login_ui(ui),
+            AuthState::LoggingIn   => self.logging_ui(ui),
+            AuthState::LoggedIn(_) => self.main_ui(ui),
         }
     }
 }
