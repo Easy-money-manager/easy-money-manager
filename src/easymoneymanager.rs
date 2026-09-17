@@ -1076,7 +1076,7 @@ impl EasyMoneyManager {
 
                         ui.label("Password");
                         ui.add(egui::TextEdit::singleline(&mut self.password_input).password(false).id(egui::Id::new("login_password")));
-                        ui.label(format!("chars={} bytes={}", self.password_input.chars().count(), self.password_input.len()));
+//                        ui.label(format!("chars={} bytes={}", self.password_input.chars().count(), self.password_input.len()));
 
                         ui.add_space(16.0);
 
