@@ -7,6 +7,7 @@ use egui::{ TextStyle, FontId };
 use emm_shared::request::{ RegisterRequest, LoginRequest, CreateRecordRequest, UpdateRecordRequest };
 use emm_shared::response::{ LoginResponse };
 use crate::clienttask::/*{*/ ClientTask; //, ClientTaskError };
+use unicode_normalization::UnicodeNormalization;
 
 // EasyMoneyManager
 //
@@ -141,6 +142,7 @@ impl EasyMoneyManager {
         Self::configure_style(&cc.egui_ctx);
         Self::default()
     }
+    // Colors {{{
     fn configure_style(ctx: &egui::Context) {
         let mut style: egui::Style = (*ctx.style_of(egui::Theme::Dark)).clone();
 
@@ -386,6 +388,7 @@ impl EasyMoneyManager {
         Self::paint_grid(&painter, rect);
         Self::paint_streaks(&painter, rect);
     }
+    // }}}
     pub fn balance(&self) -> i64 {
         let mut balance: i64 = self.sheet_collections[self.active_collection].sheets[0].sum();
         for sheet in &self.sheet_collections[self.active_collection].sheets[1..self.sheet_collections[self.active_collection].len()] {
@@ -395,6 +398,9 @@ impl EasyMoneyManager {
     }
     pub fn balance_display(&self) -> String {
         (self.balance() as f64 / 100.0).to_string()
+    }
+    pub fn normalize_password(password: &str) -> String {
+        password.nfc().collect()
     }
 
     pub fn active_collection(&self) -> &SheetCollection {
@@ -422,10 +428,11 @@ impl EasyMoneyManager {
     fn register(&mut self) {
         let request: RegisterRequest = RegisterRequest {
             username: self.username_input.clone(),
-            password: self.password_input.clone(),
+            password: Self::normalize_password(&self.password_input.clone()),
         };
+        self.username_input.clear();
+        self.password_input.clear();
         let api_client: ApiClient = self.api_client.clone();
-
         #[cfg(not(target_arch = "wasm32"))]
         {
             self.register_task = Some(
@@ -451,8 +458,10 @@ impl EasyMoneyManager {
     fn login(&mut self) {
         let request: LoginRequest = LoginRequest {
             username: self.username_input.clone(),
-            password: self.password_input.clone(),
+            password: Self::normalize_password(&self.password_input.clone()),
         };
+        self.username_input.clear();
+        self.password_input.clear();
         let api_client: ApiClient = self.api_client.clone();
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -525,6 +534,7 @@ impl EasyMoneyManager {
         match result {
             Ok(Ok(()))     => self.auth_error = Some("Account created succesfully, you may log in now!".to_string()),
             Ok(Err(error)) => {
+                self.auth_state = AuthState::LoggedOut;
                 self.auth_error = Some("Registration failed, probably name already in use\nPossibly server may be down".to_string());
                 self.log_error(&format!("Registration failed: {}", error));
             }
@@ -1060,12 +1070,13 @@ impl EasyMoneyManager {
                         ui.set_width(320.0);
 
                         ui.label("Username");
-                        ui.text_edit_singleline(&mut self.username_input);
+                        ui.add(egui::TextEdit::singleline(&mut self.username_input).id(egui::Id::new("login_username")));
 
                         ui.add_space(10.0);
 
                         ui.label("Password");
-                        ui.add(egui::TextEdit::singleline(&mut self.password_input).password(true));
+                        ui.add(egui::TextEdit::singleline(&mut self.password_input).password(false).id(egui::Id::new("login_password")));
+                        ui.label(format!("chars={} bytes={}", self.password_input.chars().count(), self.password_input.len()));
 
                         ui.add_space(16.0);
 
