@@ -58,7 +58,7 @@ impl EasyMoneyManager {
                         if ui.button(&sheet_collection.name).clicked() {
                             self.active_collection = index;
                         }
-                        ui.label(self.balance_display());
+                        ui.label(sheet_collection.balance_display());
                         ui.end_row();
                     }
                 });
