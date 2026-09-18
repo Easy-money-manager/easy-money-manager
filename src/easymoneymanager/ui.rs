@@ -79,11 +79,9 @@ impl EasyMoneyManager {
                     if let Some(index) = selected_sheet {
                         self.active_collection_mut().active_sheet_set(index);
                     }
-                    if self.active_collection == 0 {
-                        ui.label("Balance");
-                        ui.label(self.balance_display());
-                        ui.end_row();
-                    }
+                    ui.label("Balance");
+                    ui.label(self.balance_display());
+                    ui.end_row();
                 });
 
                 ui.separator();
