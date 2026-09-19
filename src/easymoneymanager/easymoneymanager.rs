@@ -10,8 +10,8 @@ use crate::easymoneymanager::auth::AuthState;
 
 
 pub struct EasyMoneyManager {
-    pub(super) username_input: String,
-    pub(super) password_input: String,
+    pub(super) input_username: String,
+    pub(super) input_password: String,
     pub(super) description: String,
     pub(super) day: u32,
     pub(super) month: u32,
@@ -21,6 +21,7 @@ pub struct EasyMoneyManager {
     pub(super) error_msg: Option<String>,
     pub(super) auth_error: Option<String>,
     pub(super) record_sorting: RecordSorting,
+    pub(super) show_remove_account_popup: bool,
 
     pub(super) sheet_collections: Vec<SheetCollection>,
     pub(super) active_collection: usize,
@@ -59,18 +60,19 @@ pub struct EasyMoneyManager {
 impl Default for EasyMoneyManager {
     fn default() -> Self {
         Self {
-            username_input: String::new(),
-            password_input: String::new(),
+            input_username: String::new(),
+            input_password: String::new(),
 
             description: String::new(),
-            day: 0,
-            month: 0,
-            year: 0,
+            day: 1,
+            month: 1,
+            year: 1900,
             value_zl: String::new(),
             value_gr: String::new(),
             error_msg: None,
             auth_error: None,
             quit_after_logout: false,
+            show_remove_account_popup: false,
 
             record_sorting: RecordSorting::DateDescending,
             sheet_collections: Vec::new(),
