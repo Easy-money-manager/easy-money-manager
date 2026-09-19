@@ -7,6 +7,7 @@ use crate::clienttask::ClientTask;
 use emm_shared::response::LoginResponse;
 use unicode_normalization::UnicodeNormalization;
 use crate::easymoneymanager::auth::AuthState;
+use chrono::{ Datelike, Local };
 
 
 pub struct EasyMoneyManager {
@@ -65,11 +66,10 @@ impl Default for EasyMoneyManager {
         Self {
             input_username: String::new(),
             input_password: String::new(),
-
             description: String::new(),
-            day: 1,
-            month: 1,
-            year: 1900,
+            day: Local::now().date_naive().day(),
+            month: Local::now().date_naive().month(),
+            year: Local::now().date_naive().year(),
             value_zl: String::new(),
             value_gr: String::new(),
             record_edited: None,

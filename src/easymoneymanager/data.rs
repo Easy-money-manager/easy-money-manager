@@ -1,6 +1,7 @@
 use super::EasyMoneyManager;
 use crate::clienttask::ClientTask;
 use crate::api::ApiClient;
+use chrono::{ Datelike, Local };
 
 use emm_shared::record::Record;
 use emm_shared::sheetcollection::SheetCollection;
@@ -88,6 +89,7 @@ impl EasyMoneyManager {
                     )
             ));
         }
+        self.input_reset();
     }
     pub(super) fn edit_record(&mut self, index: usize) {
         let record = match Record::from_input(
@@ -143,6 +145,7 @@ impl EasyMoneyManager {
                     ClientTask::spawn(async move { api_client.update_record(&session_token, record_id, &request).await } )
             ));
         }
+        self.input_reset();
     }
     pub(super) fn remove_record(&mut self, index: usize) {
         let api_client = self.api_client.clone();
@@ -270,5 +273,15 @@ impl EasyMoneyManager {
             Ok(Err(error)) => self.log_error(&format!("[Server response] failed to remove record: {}", error)),
             Err(_error)    => self.log_error(&format!("Async task failed")),
         }
+    }
+    pub(super) fn input_reset(&mut self) {
+            self.input_username =  String::new();
+            self.input_password =  String::new();
+            self.description    =  String::new();
+            self.day            =  Local::now().date_naive().day();
+            self.month          =  Local::now().date_naive().month();
+            self.year           =  Local::now().date_naive().year();
+            self.value_zl       =  String::new();
+            self.value_gr       =  String::new();
     }
 }
