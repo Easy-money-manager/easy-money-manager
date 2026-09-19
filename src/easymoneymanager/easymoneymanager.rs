@@ -1,6 +1,6 @@
 use emm_shared::record::Record;
 use emm_shared::sheetcollection::SheetCollection;
-use emm_shared::sheet::SheetError;
+use emm_shared::sheet::{ SheetError, RecordSorting };
 use crate::api::ApiClient;
 use eframe::egui;
 use crate::clienttask::ClientTask;
@@ -20,6 +20,7 @@ pub struct EasyMoneyManager {
     pub(super) value_gr: String,
     pub(super) error_msg: Option<String>,
     pub(super) auth_error: Option<String>,
+    pub(super) record_sorting: RecordSorting,
 
     pub(super) sheet_collections: Vec<SheetCollection>,
     pub(super) active_collection: usize,
@@ -71,6 +72,7 @@ impl Default for EasyMoneyManager {
             auth_error: None,
             quit_after_logout: false,
 
+            record_sorting: RecordSorting::DateDescending,
             sheet_collections: Vec::new(),
             active_collection: 0,
             api_client: ApiClient::new(),
