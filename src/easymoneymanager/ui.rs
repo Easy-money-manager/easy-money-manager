@@ -1,6 +1,7 @@
 use super::EasyMoneyManager;
 use eframe::egui;
 use emm_shared::sheet::RecordSorting;
+use chrono::Datelike;
 
 impl EasyMoneyManager {
     pub(super) fn main_ui(&mut self, ui: &mut egui::Ui) {
@@ -157,15 +158,31 @@ impl EasyMoneyManager {
                                     };
                                 }
                                 ui.end_row();
-                                for index in 0..self.active_collection().active_sheet().len() {
-                                    let record = &mut self.active_collection_mut().active_sheet_mut().records[index];
+                                let mut record_edited = self.record_edited;
+                                let records_len: usize = self.active_collection().active_sheet().len();
+                                for index in 0..records_len {
+                                    let (record_id, description, date, value, date_display, value_display) = {
+                                    let record = &self.active_collection_mut().active_sheet_mut().records[index];
+                                    (record.id(), record.description().to_string(), record.date(), record.value(), record.date_display(), record.value_display())
+                                    };
 
-                                    ui.label(record.description());
-                                    ui.label(record.date_display());
-                                    ui.label(record.value_display());
+                                    ui.label(&description);
+                                    ui.label(date_display);
+                                    ui.label(value_display);
 
-                                    if ui.button("Edit").clicked() {
-                                        self.edit_record(index);
+                                    if record_edited == record_id {
+                                        if ui.button("Save").clicked() {
+                                            record_edited = 0;
+                                            self.edit_record(index);
+                                        }
+                                    } else if ui.button("Edit").clicked() {
+                                        record_edited = record_id;
+                                        self.description = description;
+                                        self.day      = date.day();
+                                        self.month    = date.month();
+                                        self.year     = date.year();
+                                        self.value_gr = (value%100).to_string();
+                                        self.value_zl = (value/100).to_string();
                                     }
 
                                     if ui.button("Remove").clicked() {
@@ -173,6 +190,7 @@ impl EasyMoneyManager {
                                     }
                                     ui.end_row();
                                 }
+                                self.record_edited = record_edited;
                             });
                         if let Some(index) = remove_index {
                             self.remove_record(index)
