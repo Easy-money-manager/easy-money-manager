@@ -170,18 +170,18 @@ impl EasyMoneyManager {
                                     ui.label(date_display);
                                     ui.label(value_display);
 
-                                    if record_edited == record_id {
+                                    if record_edited == Some(record_id) {
                                         if ui.button("Save").clicked() {
-                                            record_edited = 0;
                                             self.edit_record(index);
+                                            record_edited = None;
                                         }
                                     } else if ui.button("Edit").clicked() {
-                                        record_edited = record_id;
+                                        record_edited = Some(record_id);
                                         self.description = description;
                                         self.day      = date.day();
                                         self.month    = date.month();
                                         self.year     = date.year();
-                                        self.value_gr = (value%100).to_string();
+                                        self.value_gr = (value.abs()%100).to_string();
                                         self.value_zl = (value/100).to_string();
                                     }
 

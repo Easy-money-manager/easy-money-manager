@@ -18,7 +18,7 @@ pub struct EasyMoneyManager {
     pub(super) year: i32,
     pub(super) value_zl: String,
     pub(super) value_gr: String,
-    pub(super) record_edited: i64,
+    pub(super) record_edited: Option<i64>,
 
     pub(super) error_msg: Option<String>,
     pub(super) auth_error: Option<String>,
@@ -72,7 +72,7 @@ impl Default for EasyMoneyManager {
             year: 1900,
             value_zl: String::new(),
             value_gr: String::new(),
-            record_edited: 0,
+            record_edited: None,
 
             error_msg: None,
             auth_error: None,
