@@ -18,15 +18,11 @@ pub struct EasyMoneyManager {
     pub(super) year: i32,
     pub(super) value_zl: String,
     pub(super) value_gr: String,
+
     pub(super) error_msg: Option<String>,
     pub(super) auth_error: Option<String>,
-    pub(super) record_sorting: RecordSorting,
-    pub(super) show_remove_account_popup: bool,
 
-    pub(super) sheet_collections: Vec<SheetCollection>,
-    pub(super) active_collection: usize,
     pub(super) quit_after_logout: bool,
-
     pub(super) api_client: ApiClient,
     pub(super) auth_state: AuthState,
     pub(super) login_task: Option<ClientTask<Result<LoginResponse, reqwest::Error>>>,
@@ -56,6 +52,12 @@ pub struct EasyMoneyManager {
     )>,
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) runtime: tokio::runtime::Runtime,
+
+    pub(super) record_sorting: RecordSorting,
+    pub(super) show_remove_account_popup: bool,
+    pub(super) sheet_collections: Vec<SheetCollection>,
+    pub(super) active_collection: usize,
+
 }
 impl Default for EasyMoneyManager {
     fn default() -> Self {
