@@ -16,6 +16,15 @@ impl EasyMoneyManager {
             });
             return;
         }
+        self.handle_import_sheet_task();
+        if self.importing_data {
+            egui::CentralPanel::default().show(ui, |ui| {
+                ui.heading("Waiting for data to import");
+                if let Some(error) = &self.error_msg {
+                    ui.label(error);
+                }
+            });
+        }
 
         self.handle_create_task();
         self.handle_edit_task();
@@ -33,6 +42,9 @@ impl EasyMoneyManager {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let username: String = self.username().expect("Logged in user should have name").to_owned();
                     ui.menu_button(username, |ui| {
+                        if ui.button("Import").clicked() {
+                            self.show_import_popup = true;
+                        }
                         if ui.button("Log out").clicked() {
                             self.logout();
                             ui.close();
@@ -202,6 +214,9 @@ impl EasyMoneyManager {
         if self.show_remove_account_popup {
             self.remove_account_popup(ui);
         }
+        if self.show_import_popup {
+            self.import_popup(ui);
+        }
         let sorting = self.record_sorting;
         self.active_collection_mut().active_sheet_mut().records_sort(sorting);
     }
@@ -288,6 +303,36 @@ impl EasyMoneyManager {
                 ui.label("Registering...")
             });
         });
+    }
+    pub(super) fn import_popup(&mut self, ui: &mut egui::Ui) {
+        let mut confirm: bool = false;
+        let mut cancel: bool = false;
+        egui::Window::new("Import sheet from csv file")
+            .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+            .collapsible(false)
+            .resizable(false)
+            .show(ui.ctx(), |ui| {
+                ui.add(egui::TextEdit::singleline(&mut self.import_path));
+                ui.horizontal(|ui| {
+                    if ui.button("Cancel").clicked() {
+                        cancel = true;
+                    }
+                    if ui.button("Confirm").clicked() {
+                        confirm = true;
+                    }
+                });
+            });
+        if cancel {
+            self.import_path.clear();
+            self.show_import_popup = false;
+        } else if confirm {
+            match self.import_sheet_from_file() {
+                Ok(records) => self.import_sheet(records),
+                Err(error)  => self.log_error(&format!("Failed to import data from file: {}", error)),
+            }
+            self.import_path.clear();
+            self.show_import_popup = false;
+        }
     }
     pub(super) fn remove_account_popup(&mut self, ui: &mut egui::Ui) {
         let mut confirm_delete: bool = false;

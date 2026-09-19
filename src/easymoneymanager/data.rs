@@ -1,12 +1,14 @@
 use super::EasyMoneyManager;
 use crate::clienttask::ClientTask;
 use crate::api::ApiClient;
+use crate::import::Import;
 use chrono::{ Datelike, Local };
 
-use emm_shared::record::Record;
+use emm_shared::record::{ Record, ParsedImportRecord };
 use emm_shared::sheetcollection::SheetCollection;
 use emm_shared::sheet::SheetError;
-use emm_shared::request::{ CreateRecordRequest, UpdateRecordRequest };
+use emm_shared::request::{ CreateRecordRequest, UpdateRecordRequest, ImportSheetRequest };
+use emm_shared::response::{ ImportSheetResponse };
 
 
 impl EasyMoneyManager {
@@ -148,7 +150,7 @@ impl EasyMoneyManager {
         self.input_reset();
     }
     pub(super) fn remove_record(&mut self, index: usize) {
-        let api_client = self.api_client.clone();
+        let api_client: ApiClient = self.api_client.clone();
         let collection_index: usize = self.active_collection;
         let sheet_index: usize = self.active_collection().active_sheet_index();
         let record_id = self.active_collection().active_sheet().records[index].id();
@@ -179,6 +181,41 @@ impl EasyMoneyManager {
             ));
         }
     }
+    pub(super) fn import_sheet(&mut self, records: Vec<ParsedImportRecord>) {
+        let api_client: ApiClient = self.api_client.clone();
+        let collection_index: usize = self.active_collection;
+        let sheet_id: i64 = self.active_collection().active_sheet().id();
+        let sheet_index: usize = self.active_collection().active_sheet;
+        let session_token: String = match self.session_token_clone() {
+            Some(session_token) => session_token,
+            None => panic!(),
+        };
+
+        let request: ImportSheetRequest = ImportSheetRequest {
+            records: records
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.import_sheet_task = Some((
+                    collection_index,
+                    sheet_index,
+                    ClientTask::spawn(
+                        &self.runtime,
+                        async move { api_client.import_sheet(&session_token, sheet_id, &request).await }
+                    )
+            ));
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.import_sheet_task = Some((
+                    collection_index,
+                    sheet_index,
+                    ClientTask::spawn(async move { api_client.import_sheet(&session_token, sheet_id, &request).await } )
+            ));
+        }
+    }
+
     pub(super) fn handle_bootstrap_task(&mut self) {
         let finished: bool = match &self.bootstrap_task {
             Some(task) => task.is_finished(),
@@ -187,7 +224,7 @@ impl EasyMoneyManager {
         if !finished {
             return;
         }
-        let task = self.bootstrap_task.take().expect("bootstrap_task should exist when it's mared as finished");
+        let task = self.bootstrap_task.take().expect("bootstrap_task should exist when it's checked to be finished");
         #[cfg(not(target_arch = "wasm32"))]
         let result = task.take(&self.runtime);
         #[cfg(target_arch = "wasm32")]
@@ -211,7 +248,7 @@ impl EasyMoneyManager {
         if !finished {
             return;
         }
-        let (collection_index, sheet_index, mut record, task) = self.create_record_task.take().expect("create_record_task should exist when it's mared as finished");
+        let (collection_index, sheet_index, mut record, task) = self.create_record_task.take().expect("create_record_task should exist when it's checked to be finished");
         #[cfg(not(target_arch = "wasm32"))]
         let result = task.take(&self.runtime);
         #[cfg(target_arch = "wasm32")]
@@ -234,7 +271,7 @@ impl EasyMoneyManager {
         if !finished {
             return;
         }
-        let (collection_index, sheet_index, index, record, task) = self.update_record_task.take().expect("update_record_task should exist when it's mared as finished");
+        let (collection_index, sheet_index, index, record, task) = self.update_record_task.take().expect("update_record_task should exist when it's checked to be finished");
         #[cfg(not(target_arch = "wasm32"))]
         let result = task.take(&self.runtime);
         #[cfg(target_arch = "wasm32")]
@@ -258,7 +295,7 @@ impl EasyMoneyManager {
         if !finished {
             return;
         }
-        let (collection_index, sheet_index, index, task) = self.remove_record_task.take().expect("remove_task should exist when it's mared as finished");
+        let (collection_index, sheet_index, index, task) = self.remove_record_task.take().expect("remove_task should exist when it's checked to be finished");
         #[cfg(not(target_arch = "wasm32"))]
         let result = task.take(&self.runtime);
         #[cfg(target_arch = "wasm32")]
@@ -273,6 +310,37 @@ impl EasyMoneyManager {
             Ok(Err(error)) => self.log_error(&format!("[Server response] failed to remove record: {}", error)),
             Err(_error)    => self.log_error(&format!("Async task failed")),
         }
+    }
+    pub(super) fn handle_import_sheet_task(&mut self) {
+        let finished: bool = match &self.import_sheet_task {
+            Some((_, _, task)) => task.is_finished(),
+            None               => false,
+        };
+        if !finished {
+            return;
+        }
+        let (collection_index, sheet_index, task) = self.import_sheet_task.take().expect("import_sheet_task should exist when it's checked to be finished");
+        #[cfg(not(target_arch = "wasm32"))]
+        let result = task.take(&self.runtime);
+        #[cfg(target_arch = "wasm32")]
+        let result = task.take();
+        match result {
+            Ok(Ok(response)) => {
+                for record in response.records {
+                    println!("{:?}", &record);
+                    self.sheet_collections[collection_index].sheets[sheet_index].push(record);
+                }
+                self.log(&format!("Sheet imported"));
+                self.error_msg = None;
+            }
+            Ok(Err(error)) => self.log_error(&format!("[Server response] failed to import sheet: {}", error)),
+            Err(_error)    => self.log_error(&format!("Async task failed")),
+        }
+    }
+
+    pub(super) fn import_sheet_from_file(&self) -> Result<Vec<ParsedImportRecord>, Box<dyn std::error::Error>> {
+        let csv_data = std::fs::read_to_string(&self.import_path)?;
+        Import::parse_csv_import(&csv_data)
     }
     pub(super) fn input_reset(&mut self) {
             self.input_username =  String::new();
