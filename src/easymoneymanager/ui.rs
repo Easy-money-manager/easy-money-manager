@@ -272,15 +272,15 @@ impl EasyMoneyManager {
         });
     }
     pub(super) fn remove_account_popup(&mut self, ui: &mut egui::Ui) {
-        let mut open: bool = true;
         let mut confirm_delete: bool = false;
         let mut cancel: bool = false;
+        let username: String = self.username().expect("Logged in user should have name").to_string();
+        let invalid_username: &mut bool = &mut self.quit_after_logout;
 
         egui::Window::new("Remove account")
             .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
             .collapsible(false)
             .resizable(false)
-            .open(&mut open)
             .show(ui.ctx(), |ui| {
                 ui.label("Enter username to confirm account deletion.");
 
@@ -296,24 +296,22 @@ impl EasyMoneyManager {
                     }
 
                     if ui.button("Delete account").clicked() {
-                        self.quit_after_logout = self.input_username != self.username().expect("Logged in username should have name");
-                        confirm_delete = !self.quit_after_logout;
+                        *invalid_username = self.input_username != username;
+                        confirm_delete = !*invalid_username;
                     }
                 });
 
-                if self.quit_after_logout {
+                if *invalid_username {
                     ui.label("Invalid username");
                 }
             });
-
-        if confirm_delete {
+        if cancel {
+            self.input_username.clear();
+            self.show_remove_account_popup = false;
+            *invalid_username = false;
+        } else if confirm_delete {
             self.input_username.clear();
             self.remove_account();
-            self.show_remove_account_popup = false;
-        }
-
-        if cancel || !open {
-            self.input_username.clear();
             self.show_remove_account_popup = false;
         }
     }
