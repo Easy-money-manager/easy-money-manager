@@ -38,12 +38,12 @@ impl ApiClient {
         self.client.delete(url).bearer_auth(session_token).send().await?.error_for_status()?;
         Ok(())
     }
-    pub async fn create_record(&self, session_token: &str, sheet_id: i64, request: &CreateRecordRequest) -> Result<i64, reqwest::Error> {
+    pub async fn create_record(&self, session_token: &str, sheet_id: i64, request: &CreateRecordRequest) -> Result<CreateRecordResponse, reqwest::Error> {
         let url: String = format!("{}/records/sheet/{}", self.base_url, sheet_id);
 
-        let response = self.client.post(url).bearer_auth(session_token).json(request).send().await?.json::<CreateRecordResponse>().await?;
+        let response: CreateRecordResponse = self.client.post(url).bearer_auth(session_token).json(request).send().await?.json::<CreateRecordResponse>().await?;
 
-        Ok(response.id)
+        Ok(response)
     }
     pub async fn update_record(&self, session_token: &str, record_id: i64, request: &UpdateRecordRequest) -> Result<(), reqwest::Error> {
         let url: String = format!("{}/records/{}", self.base_url, record_id);
@@ -66,12 +66,12 @@ impl ApiClient {
 
         Ok(response)
     }
-    pub async fn get_bootstrap(&self, session_token: &str) -> Result<Vec<SheetCollection>, reqwest::Error> {
+    pub async fn get_bootstrap(&self, session_token: &str) -> Result<BootstrapResponse, reqwest::Error> {
         let url: String = format!("{}/bootstrap", self.base_url);
         eprintln!("Getting bootstrap from: {}", url);
 
-        let response = self.client.get(url).bearer_auth(session_token).send().await?.error_for_status()?.json::<BootstrapResponse>().await?;
+        let response: BootstrapResponse = self.client.get(url).bearer_auth(session_token).send().await?.error_for_status()?.json::<BootstrapResponse>().await?;
 
-        Ok(response.collections)
+        Ok(response)
     }
 }

@@ -230,8 +230,8 @@ impl EasyMoneyManager {
         #[cfg(target_arch = "wasm32")]
         let result = task.take();
         match result {
-            Ok(Ok(collections)) => {
-                self.sheet_collections = collections;
+            Ok(Ok(response)) => {
+                self.sheet_collections = response.collections;
                 self.bootstrap_loaded = true;
                 self.log(&format!("Bootstrap loaded"));
                 self.error_msg = None;
@@ -254,8 +254,8 @@ impl EasyMoneyManager {
         #[cfg(target_arch = "wasm32")]
         let result = task.take();
         match result {
-            Ok(Ok(id)) => {
-                record.id_set(id);
+            Ok(Ok(response)) => {
+                record.id_set(response.id);
                 self.sheet_collections[collection_index].sheets[sheet_index].push(record);
                 self.error_msg = None;
             }

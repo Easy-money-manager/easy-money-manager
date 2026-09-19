@@ -4,7 +4,7 @@ use emm_shared::sheet::{ SheetError, RecordSorting };
 use crate::api::ApiClient;
 use eframe::egui;
 use crate::clienttask::ClientTask;
-use emm_shared::response::{ LoginResponse, ImportSheetResponse };
+use emm_shared::response::{ LoginResponse, CreateRecordResponse, BootstrapResponse, ImportSheetResponse };
 use unicode_normalization::UnicodeNormalization;
 use crate::easymoneymanager::auth::AuthState;
 use chrono::{ Datelike, Local };
@@ -34,12 +34,12 @@ pub struct EasyMoneyManager {
     pub(super) logout_task: Option<ClientTask<Result<(), reqwest::Error>>>,
     pub(super) remove_account_task: Option<ClientTask<Result<(), reqwest::Error>>>,
     pub(super) bootstrap_loaded: bool,
-    pub(super) bootstrap_task: Option<ClientTask<Result<Vec<SheetCollection>, reqwest::Error>>>,
+    pub(super) bootstrap_task: Option<ClientTask<Result<BootstrapResponse, reqwest::Error>>>,
     pub(super) create_record_task: Option<(
         usize,
         usize,
         Record,
-        ClientTask<Result<i64, reqwest::Error>>
+        ClientTask<Result<CreateRecordResponse, reqwest::Error>>
     )>,
     pub(super) update_record_task: Option<(
         usize,
