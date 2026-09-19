@@ -270,6 +270,5 @@ impl EasyMoneyManager {
             Ok(Err(error)) => self.log_error(&format!("[Server response] failed to remove record: {}", error)),
             Err(_error)    => self.log_error(&format!("Async task failed")),
         }
-
     }
 }

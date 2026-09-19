@@ -1,5 +1,6 @@
 use super::EasyMoneyManager;
 use eframe::egui;
+use emm_shared::sheet::RecordSorting;
 
 impl EasyMoneyManager {
     pub(super) fn main_ui(&mut self, ui: &mut egui::Ui) {
@@ -137,9 +138,24 @@ impl EasyMoneyManager {
                             .num_columns(5)
                             .spacing([15.0, 10.0])
                             .show(ui, |ui| {
-                                ui.label("Name");
-                                ui.label("Date");
-                                ui.label("Value");
+                                if ui.button("Name").clicked() {
+                                    self.record_sorting = match self.record_sorting {
+                                    RecordSorting::DescriptionAscending => RecordSorting::DescriptionDescending,
+                                    _                                   => RecordSorting::DescriptionAscending,
+                                    };
+                                }
+                                if ui.button("Date").clicked() {
+                                    self.record_sorting = match self.record_sorting {
+                                    RecordSorting::DateDescending => RecordSorting::DateAscending,
+                                    _                             => RecordSorting::DateDescending,
+                                    };
+                                }
+                                if ui.button("Value").clicked() {
+                                    self.record_sorting = match self.record_sorting {
+                                    RecordSorting::ValueDescending => RecordSorting::ValueAscending,
+                                    _                              => RecordSorting::ValueDescending,
+                                    };
+                                }
                                 ui.end_row();
                                 for index in 0..self.active_collection().active_sheet().len() {
                                     let record = &mut self.active_collection_mut().active_sheet_mut().records[index];
@@ -165,6 +181,8 @@ impl EasyMoneyManager {
                 });
             });
         });
+        let sorting = self.record_sorting;
+        self.active_collection_mut().active_sheet_mut().records_sort(sorting);
     }
     pub(super) fn login_ui(&mut self, ui: &mut egui::Ui) {
         egui::CentralPanel::default().frame(egui::Frame::new().fill(egui::Color32::TRANSPARENT)).show(ui, |ui| {
