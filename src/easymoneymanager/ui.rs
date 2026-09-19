@@ -70,7 +70,17 @@ impl EasyMoneyManager {
                 egui::Grid::new("collections_grid").num_columns(2).spacing([100.0, 15.0]).show(ui, |ui| {
                     for (index, sheet_collection) in self.sheet_collections.iter().enumerate() {
                         if ui.button(&sheet_collection.name).clicked() {
-                            self.active_collection = index;
+                            match self.active_collection == index {
+                                true  => { },
+                                false => {
+                                    self.active_collection = index;
+                                    self.record_sorting = match index {
+                                        0 => RecordSorting::DateDescending,
+                                        1 => RecordSorting::DateAscending,
+                                        _ => RecordSorting::ValueDescending,
+                                    }
+                                }
+                            }
                         }
                         ui.label(sheet_collection.balance_display());
                         ui.end_row();
