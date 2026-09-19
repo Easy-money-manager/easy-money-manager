@@ -147,63 +147,65 @@ impl EasyMoneyManager {
                     let mut remove_index = None;
 
                     if !self.active_collection().active_sheet().is_empty() {
-                        egui::Grid::new("display_sheet_content_grid")
-                            .num_columns(5)
-                            .spacing([15.0, 10.0])
-                            .show(ui, |ui| {
-                                if ui.button("Name").clicked() {
-                                    self.record_sorting = match self.record_sorting {
-                                    RecordSorting::DescriptionAscending => RecordSorting::DescriptionDescending,
-                                    _                                   => RecordSorting::DescriptionAscending,
-                                    };
-                                }
-                                if ui.button("Date").clicked() {
-                                    self.record_sorting = match self.record_sorting {
-                                    RecordSorting::DateDescending => RecordSorting::DateAscending,
-                                    _                             => RecordSorting::DateDescending,
-                                    };
-                                }
-                                if ui.button("Value").clicked() {
-                                    self.record_sorting = match self.record_sorting {
-                                    RecordSorting::ValueDescending => RecordSorting::ValueAscending,
-                                    _                              => RecordSorting::ValueDescending,
-                                    };
-                                }
-                                ui.end_row();
-                                let mut record_edited = self.record_edited;
-                                let records_len: usize = self.active_collection().active_sheet().len();
-                                for index in 0..records_len {
-                                    let (record_id, description, date, value, date_display, value_display) = {
-                                    let record = &self.active_collection_mut().active_sheet_mut().records[index];
-                                    (record.id(), record.description().to_string(), record.date(), record.value(), record.date_display(), record.value_display())
-                                    };
-
-                                    ui.label(&description);
-                                    ui.label(date_display);
-                                    ui.label(value_display);
-
-                                    if record_edited == Some(record_id) {
-                                        if ui.button("Save").clicked() {
-                                            self.edit_record(index);
-                                            record_edited = None;
-                                        }
-                                    } else if ui.button("Edit").clicked() {
-                                        record_edited = Some(record_id);
-                                        self.description = description;
-                                        self.day      = date.day();
-                                        self.month    = date.month();
-                                        self.year     = date.year();
-                                        self.value_gr = (value.abs()%100).to_string();
-                                        self.value_zl = (value/100).to_string();
+                        egui::ScrollArea::vertical().show(ui, |ui| {
+                            egui::Grid::new("display_sheet_content_grid")
+                                .num_columns(5)
+                                .spacing([15.0, 10.0])
+                                .show(ui, |ui| {
+                                    if ui.button("Name").clicked() {
+                                        self.record_sorting = match self.record_sorting {
+                                            RecordSorting::DescriptionAscending => RecordSorting::DescriptionDescending,
+                                            _                                   => RecordSorting::DescriptionAscending,
+                                        };
                                     }
-
-                                    if ui.button("Remove").clicked() {
-                                        remove_index = Some(index);
+                                    if ui.button("Date").clicked() {
+                                        self.record_sorting = match self.record_sorting {
+                                            RecordSorting::DateDescending => RecordSorting::DateAscending,
+                                            _                             => RecordSorting::DateDescending,
+                                        };
+                                    }
+                                    if ui.button("Value").clicked() {
+                                        self.record_sorting = match self.record_sorting {
+                                            RecordSorting::ValueDescending => RecordSorting::ValueAscending,
+                                            _                              => RecordSorting::ValueDescending,
+                                        };
                                     }
                                     ui.end_row();
-                                }
-                                self.record_edited = record_edited;
-                            });
+                                    let mut record_edited = self.record_edited;
+                                    let records_len: usize = self.active_collection().active_sheet().len();
+                                    for index in 0..records_len {
+                                        let (record_id, description, date, value, date_display, value_display) = {
+                                            let record = &self.active_collection_mut().active_sheet_mut().records[index];
+                                            (record.id(), record.description().to_string(), record.date(), record.value(), record.date_display(), record.value_display())
+                                        };
+
+                                        ui.label(&description);
+                                        ui.label(date_display);
+                                        ui.label(value_display);
+
+                                        if record_edited == Some(record_id) {
+                                            if ui.button("Save").clicked() {
+                                                self.edit_record(index);
+                                                record_edited = None;
+                                            }
+                                        } else if ui.button("Edit").clicked() {
+                                            record_edited = Some(record_id);
+                                            self.description = description;
+                                            self.day      = date.day();
+                                            self.month    = date.month();
+                                            self.year     = date.year();
+                                            self.value_gr = (value.abs()%100).to_string();
+                                            self.value_zl = (value/100).to_string();
+                                        }
+
+                                        if ui.button("Remove").clicked() {
+                                            remove_index = Some(index);
+                                        }
+                                        ui.end_row();
+                                    }
+                                    self.record_edited = record_edited;
+                                });
+                        });
                         if let Some(index) = remove_index {
                             self.remove_record(index)
                         }
