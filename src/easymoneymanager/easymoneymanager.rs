@@ -4,7 +4,7 @@ use emm_shared::sheet::{ SheetError, RecordSorting };
 use crate::api::ApiClient;
 use eframe::egui;
 use crate::clienttask::ClientTask;
-use emm_shared::response::LoginResponse;
+use emm_shared::response::{ LoginResponse, ImportSheetResponse };
 use unicode_normalization::UnicodeNormalization;
 use crate::easymoneymanager::auth::AuthState;
 use chrono::{ Datelike, Local };
@@ -24,6 +24,8 @@ pub struct EasyMoneyManager {
     pub(super) error_msg: Option<String>,
     pub(super) auth_error: Option<String>,
 
+    pub(super) importing_data: bool,
+    pub(super) import_path: String,
     pub(super) quit_after_logout: bool,
     pub(super) api_client: ApiClient,
     pub(super) auth_state: AuthState,
@@ -46,11 +48,16 @@ pub struct EasyMoneyManager {
         Record,
         ClientTask<Result<(), reqwest::Error>>,
     )>,
-    pub(super) remove_record_task: Option< (
+    pub(super) remove_record_task: Option<(
         usize,
         usize,
         usize,
         ClientTask<Result<(), reqwest::Error>>,
+    )>,
+    pub(super) import_sheet_task: Option<(
+        usize,
+        usize,
+        ClientTask<Result<ImportSheetResponse, reqwest::Error>>
     )>,
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) runtime: tokio::runtime::Runtime,
@@ -59,6 +66,7 @@ pub struct EasyMoneyManager {
     pub(super) show_remove_account_popup: bool,
     pub(super) sheet_collections: Vec<SheetCollection>,
     pub(super) active_collection: usize,
+    pub(super) show_import_popup: bool,
 
 }
 impl Default for EasyMoneyManager {
@@ -74,11 +82,8 @@ impl Default for EasyMoneyManager {
             value_gr: String::new(),
             record_edited: None,
 
-            error_msg: None,
-            auth_error: None,
-            quit_after_logout: false,
-            show_remove_account_popup: false,
-
+            importing_data: false,
+            import_path: String::new(),
             record_sorting: RecordSorting::DateDescending,
             sheet_collections: Vec::new(),
             active_collection: 0,
@@ -93,8 +98,15 @@ impl Default for EasyMoneyManager {
             create_record_task: None,
             update_record_task: None,
             remove_record_task: None,
+            import_sheet_task: None,
             #[cfg(not(target_arch = "wasm32"))]
             runtime: tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime"),
+
+            error_msg: None,
+            auth_error: None,
+            quit_after_logout: false,
+            show_remove_account_popup: false,
+            show_import_popup: false,
         }
     }
 }

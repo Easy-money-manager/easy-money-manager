@@ -1,6 +1,6 @@
 use emm_shared::sheetcollection::SheetCollection;
-use emm_shared::request::{ RegisterRequest, LoginRequest, CreateRecordRequest,  UpdateRecordRequest };
-use emm_shared::response::{ LoginResponse, CreateRecordResponse, BootstrapResponse };
+use emm_shared::request::{ RegisterRequest, LoginRequest, CreateRecordRequest,  UpdateRecordRequest, ImportSheetRequest };
+use emm_shared::response::{ LoginResponse, CreateRecordResponse, BootstrapResponse, ImportSheetResponse };
 
 #[derive(Clone)]
 pub struct ApiClient {
@@ -58,6 +58,13 @@ impl ApiClient {
         self.client.delete(url).bearer_auth(session_token).send().await?.error_for_status()?;
 
         Ok(())
+    }
+    pub async fn import_sheet(&self, session_token: &str, sheet_id :i64, request: &ImportSheetRequest) -> Result<ImportSheetResponse, reqwest::Error> {
+        let url: String = format!("{}/import/sheet/{}", self.base_url, sheet_id);
+
+        let response = self.client.post(url).bearer_auth(session_token).json(request).send().await?.error_for_status()?.json::<ImportSheetResponse>().await?;
+
+        Ok(response)
     }
     pub async fn get_bootstrap(&self, session_token: &str) -> Result<Vec<SheetCollection>, reqwest::Error> {
         let url: String = format!("{}/bootstrap", self.base_url);

@@ -1,6 +1,7 @@
 mod clienttask;
 mod easymoneymanager;
 mod api;
+mod import;
 use easymoneymanager::EasyMoneyManager;
 
 #[cfg(target_arch = "wasm32")]
