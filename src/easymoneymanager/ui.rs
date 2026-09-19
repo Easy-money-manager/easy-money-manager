@@ -37,7 +37,7 @@ impl EasyMoneyManager {
                             ui.close();
                         }
                         if ui.button("Remove account").clicked() {
-                            self.remove_account();
+                            self.show_remove_account_popup = true;
                         }
                         #[cfg(not(target_arch = "wasm32"))]
                         {
@@ -181,6 +181,9 @@ impl EasyMoneyManager {
                 });
             });
         });
+        if self.show_remove_account_popup {
+            self.remove_account_popup(ui);
+        }
         let sorting = self.record_sorting;
         self.active_collection_mut().active_sheet_mut().records_sort(sorting);
     }
@@ -206,18 +209,18 @@ impl EasyMoneyManager {
                         ui.set_width(320.0);
 
                         ui.label("Username");
-                        ui.add(egui::TextEdit::singleline(&mut self.username_input).id(egui::Id::new("login_username")));
+                        ui.add(egui::TextEdit::singleline(&mut self.input_username).id(egui::Id::new("login_username")));
 
                         ui.add_space(10.0);
 
                         ui.label("Password");
                         #[cfg(debug_assertions)]
                         {
-                            ui.add(egui::TextEdit::singleline(&mut self.password_input).password(false).id(egui::Id::new("login_password")));
-                            ui.label(format!("chars={} bytes={}", self.password_input.chars().count(), self.password_input.len()));
+                            ui.add(egui::TextEdit::singleline(&mut self.input_password).password(false).id(egui::Id::new("login_password")));
+                            ui.label(format!("chars={} bytes={}", self.input_password.chars().count(), self.input_password.len()));
                         }
                         #[cfg(not(debug_assertions))]
-                        ui.add(egui::TextEdit::singleline(&mut self.password_input).password(true).id(egui::Id::new("login_password")));
+                        ui.add(egui::TextEdit::singleline(&mut self.input_password).password(true).id(egui::Id::new("login_password")));
 
                         ui.add_space(16.0);
 
@@ -267,5 +270,49 @@ impl EasyMoneyManager {
                 ui.label("Registering...")
             });
         });
+    }
+    pub(super) fn remove_account_popup(&mut self, ui: &mut egui::Ui) {
+        let mut confirm_delete: bool = false;
+        let mut cancel: bool = false;
+        let username: String = self.username().expect("Logged in user should have name").to_string();
+        let invalid_username: &mut bool = &mut self.quit_after_logout;
+
+        egui::Window::new("Remove account")
+            .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+            .collapsible(false)
+            .resizable(false)
+            .show(ui.ctx(), |ui| {
+                ui.label("Enter username to confirm account deletion.");
+
+                ui.add_space(8.0);
+
+                ui.add(egui::TextEdit::singleline(&mut self.input_username));
+
+                ui.add_space(12.0);
+
+                ui.horizontal(|ui| {
+                    if ui.button("Cancel").clicked() {
+                        cancel = true;
+                    }
+
+                    if ui.button("Delete account").clicked() {
+                        *invalid_username = self.input_username != username;
+                        confirm_delete = !*invalid_username;
+                    }
+                });
+
+                if *invalid_username {
+                    ui.label("Invalid username");
+                }
+            });
+        if cancel {
+            self.input_username.clear();
+            self.show_remove_account_popup = false;
+            *invalid_username = false;
+        } else if confirm_delete {
+            self.input_username.clear();
+            self.remove_account();
+            self.show_remove_account_popup = false;
+        }
     }
 }

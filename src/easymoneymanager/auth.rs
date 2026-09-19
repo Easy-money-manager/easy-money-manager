@@ -7,9 +7,9 @@ use eframe::egui;
 
 #[allow(dead_code)]
 pub(super) struct UserSession {
-    pub user_id: i64,
-    pub username: String,
-    pub session_token: String,
+    pub(super) user_id: i64,
+    pub(super) username: String,
+    pub(super) session_token: String,
 }
 
 
@@ -43,11 +43,11 @@ impl EasyMoneyManager {
 
     pub(super) fn register(&mut self) {
         let request: RegisterRequest = RegisterRequest {
-            username: self.username_input.clone(),
-            password: Self::normalize_password(&self.password_input.clone()),
+            username: self.input_username.clone(),
+            password: Self::normalize_password(&self.input_password.clone()),
         };
-        self.username_input.clear();
-        self.password_input.clear();
+        self.input_username.clear();
+        self.input_password.clear();
         let api_client: ApiClient = self.api_client.clone();
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -74,11 +74,11 @@ impl EasyMoneyManager {
     }
     pub(super) fn login(&mut self) {
         let request: LoginRequest = LoginRequest {
-            username: self.username_input.clone(),
-            password: Self::normalize_password(&self.password_input.clone()),
+            username: self.input_username.clone(),
+            password: Self::normalize_password(&self.input_password.clone()),
         };
-        self.username_input.clear();
-        self.password_input.clear();
+        self.input_username.clear();
+        self.input_password.clear();
         let api_client: ApiClient = self.api_client.clone();
 
         #[cfg(not(target_arch = "wasm32"))]
