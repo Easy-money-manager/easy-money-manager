@@ -30,6 +30,7 @@ impl EasyMoneyManager {
         self.handle_edit_task();
         self.handle_remove_task();
         egui::CentralPanel::default().frame(egui::Frame::new().fill(egui::Color32::TRANSPARENT)).show(ui, |ui| {
+            egui::ScrollArea::vertical().show(ui, |ui| {
             let available_width: f32 = ui.available_width();
             ui.horizontal(|ui| {
                 let heading_width: f32 = 200.0;
@@ -221,6 +222,7 @@ impl EasyMoneyManager {
                         }
                     }
                 });
+            });
             });
         });
         if self.show_remove_account_popup {
