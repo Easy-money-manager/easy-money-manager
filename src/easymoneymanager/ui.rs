@@ -29,6 +29,305 @@ impl EasyMoneyManager {
         self.handle_create_task();
         self.handle_edit_task();
         self.handle_remove_task();
+        #[cfg(not(target_os = "android"))]
+        self.desktop_ui(ui);
+        #[cfg(target_os = "android")]
+        self.android_ui(ui);
+
+        if self.show_remove_account_popup {
+            self.remove_account_popup(ui);
+        }
+        if self.show_import_popup {
+            self.import_popup(ui);
+        }
+        let sorting = self.record_sorting;
+        self.active_collection_mut().active_sheet_mut().records_sort(sorting);
+    }
+    #[cfg(target_os = "android")]
+    fn android_ui(&mut self, ui: &mut egui::Ui) {
+        egui::CentralPanel::default()
+            .frame(
+                egui::Frame::new()
+                .fill(egui::Color32::TRANSPARENT)
+                .inner_margin(egui::Margin::same(12)),
+            )
+            .show(ui, |ui| {
+                ui.add_space(8.0);
+
+                ui.vertical_centered(|ui| {
+                    ui.heading("Easy Money Manager");
+                });
+
+                ui.add_space(16.0);
+
+                //
+                // COLLECTIONS
+                //
+
+                ui.heading("Collections");
+                ui.add_space(4.0);
+
+                ui.horizontal(|ui| {
+                    let collections_len: usize = self.sheet_collections.len();
+
+                    for index in 0..collections_len {
+                        let name: String = self.sheet_collections[index].name.clone();
+                        let balance: String = self.sheet_collections[index].balance_display();
+
+                        let selected: bool = self.active_collection == index;
+
+                        let text = format!("{name}\n{balance}");
+
+                        if ui
+                            .selectable_label(selected, text)
+                                .clicked()
+                        {
+                            if self.active_collection != index {
+                                self.active_collection = index;
+
+                                self.record_sorting = match index {
+                                    0 => RecordSorting::DateDescending,
+                                    1 => RecordSorting::DateAscending,
+                                    _ => RecordSorting::ValueDescending,
+                                };
+                            }
+                        }
+                    }
+                });
+
+                //
+                // SHEETS
+                //
+
+                ui.heading("Sheets");
+                ui.add_space(4.0);
+
+                let mut selected_sheet: Option<usize> = None;
+
+                ui.horizontal_wrapped(|ui| {
+                    let sheets_len: usize = self.active_collection().sheets.len();
+
+                    for index in 0..sheets_len {
+                        let sheet = &self.active_collection().sheets[index];
+
+                        let name: String = sheet.name.clone();
+
+                        let balance: String = if index == 0 || self.active_collection == 1 {
+                            sheet.sum_display()
+                        } else {
+                            sheet.balance_display(
+                                &self.sheet_collections[0].sheets[0].sum(),
+                            )
+                        };
+
+                        let text = format!("{name}\n{balance}");
+
+                        if ui.button(text).clicked() {
+                            selected_sheet = Some(index);
+                        }
+                    }
+                });
+
+                if let Some(index) = selected_sheet {
+                    self.active_collection_mut().active_sheet_set(index);
+                }
+
+                //
+                // EVERYTHING BELOW HERE SCROLLS
+                //
+
+                egui::ScrollArea::vertical()
+                    .id_salt("android_content_scroll")
+                    .show(ui, |ui| {
+                        //
+                        // ADD / EDIT RECORD
+                        //
+
+                        if self.record_edited.is_some() {
+                            ui.heading("Edit record");
+                        } else {
+                            ui.heading("Add record");
+                        }
+
+                        ui.add_space(8.0);
+
+                        ui.label("Name");
+                        ui.text_edit_singleline(&mut self.description);
+
+                        ui.add_space(8.0);
+
+                        ui.label("Date");
+
+                        ui.horizontal(|ui| {
+                            ui.add(
+                                egui::DragValue::new(&mut self.day)
+                                .range(1..=31),
+                            );
+
+                            ui.label("/");
+
+                            ui.add(
+                                egui::DragValue::new(&mut self.month)
+                                .range(1..=12),
+                            );
+
+                            ui.label("/");
+
+                            ui.add(
+                                egui::DragValue::new(&mut self.year)
+                                .range(1900..=2100),
+                            );
+                        });
+
+                        ui.add_space(8.0);
+
+                        ui.label("Value");
+
+                        ui.horizontal(|ui| {
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.value_zl)
+                                .desired_width(100.0),
+                            );
+
+                            ui.label(".");
+
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.value_gr)
+                                .desired_width(45.0),
+                            );
+                        });
+
+                        ui.add_space(10.0);
+
+                        if self.record_edited.is_none() {
+                            if ui
+                                .add_sized(
+                                    [ui.available_width(), 40.0],
+                                    egui::Button::new("Add record"),
+                                )
+                                    .clicked()
+                            {
+                                self.add_record();
+                            }
+                        }
+
+                        if let Some(error) = &self.error_msg {
+                            ui.label(error);
+                        }
+
+                        ui.add_space(16.0);
+                        ui.separator();
+                        ui.add_space(16.0);
+
+                        //
+                        // RECORDS
+                        //
+
+                        let sheet_name: String =
+                            self.active_collection().active_sheet().name.clone();
+
+                        ui.heading(sheet_name);
+                        ui.add_space(8.0);
+
+                        let mut remove_index: Option<usize> = None;
+                        let mut record_edited: Option<i64> = self.record_edited;
+
+                        let records_len: usize =
+                            self.active_collection().active_sheet().len();
+
+                        for index in 0..records_len {
+                            let (
+                                record_id,
+                                description,
+                                date,
+                                value,
+                                date_display,
+                                value_display,
+                            ) = {
+                                let record =
+                                    &self.active_collection()
+                                    .active_sheet()
+                                    .records[index];
+
+                                (
+                                    record.id(),
+                                    record.description().to_string(),
+                                    record.date(),
+                                    record.value(),
+                                    record.date_display(),
+                                    record.value_display(),
+                                )
+                            };
+
+                            egui::Frame::group(ui.style())
+                                .inner_margin(egui::Margin::same(10))
+                                .corner_radius(8)
+                                .show(ui, |ui| {
+                                    ui.set_width(ui.available_width());
+
+                                    ui.label(
+                                        egui::RichText::new(&description)
+                                        .strong(),
+                                    );
+
+                                    ui.horizontal(|ui| {
+                                        ui.label(date_display);
+                                        ui.with_layout(
+                                            egui::Layout::right_to_left(
+                                                egui::Align::Center,
+                                            ),
+                                            |ui| {
+                                                ui.label(value_display);
+                                            },
+                                        );
+                                    });
+
+                                    ui.add_space(6.0);
+
+                                    ui.horizontal(|ui| {
+                                        if record_edited == Some(record_id) {
+                                            if ui.button("Save").clicked() {
+                                                self.edit_record(index);
+                                                record_edited = None;
+                                            }
+                                        } else if ui.button("Edit").clicked() {
+                                            record_edited = Some(record_id);
+
+                                            self.description = description.clone();
+                                            self.day = date.day();
+                                            self.month = date.month();
+                                            self.year = date.year();
+
+                                            let grosze: i64 = value.abs() % 100;
+
+                                            self.value_gr = if grosze == 0 {
+                                                String::new()
+                                            } else {
+                                                format!("{:02}", grosze)
+                                            };
+
+                                            self.value_zl =
+                                                (value / 100).to_string();
+                                        }
+
+                                        if ui.button("Remove").clicked() {
+                                            remove_index = Some(index);
+                                        }
+                                    });
+                                });
+
+                            ui.add_space(8.0);
+                        }
+
+                        self.record_edited = record_edited;
+
+                        if let Some(index) = remove_index {
+                            self.remove_record(index);
+                        }
+                    });
+            });
+    }
+    fn desktop_ui(&mut self, ui: &mut egui::Ui) {
         egui::CentralPanel::default().frame(egui::Frame::new().fill(egui::Color32::TRANSPARENT)).show(ui, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
             let available_width: f32 = ui.available_width();
@@ -225,14 +524,6 @@ impl EasyMoneyManager {
             });
             });
         });
-        if self.show_remove_account_popup {
-            self.remove_account_popup(ui);
-        }
-        if self.show_import_popup {
-            self.import_popup(ui);
-        }
-        let sorting = self.record_sorting;
-        self.active_collection_mut().active_sheet_mut().records_sort(sorting);
     }
     pub(super) fn login_ui(&mut self, ui: &mut egui::Ui) {
         egui::CentralPanel::default().frame(egui::Frame::new().fill(egui::Color32::TRANSPARENT)).show(ui, |ui| {

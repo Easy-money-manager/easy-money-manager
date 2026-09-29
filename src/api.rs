@@ -12,8 +12,12 @@ pub struct ApiClient {
 
 impl ApiClient {
     pub fn new() -> Self {
+
+        #[cfg(not(target_os = "android"))]
+        let client = reqwest::Client::new();
+        #[cfg(target_os = "android")]
         let client = reqwest::Client::builder().resolve( "api.easy-money-manager.com", SocketAddr::new( IpAddr::V4(Ipv4Addr::new(89, 168, 104, 99)), 0,),) .build() .expect("Failed to create reqwest client");
-#[cfg(target_os = "android")]
+        #[cfg(target_os = "android")]
         {
             use std::net::TcpStream;
 
