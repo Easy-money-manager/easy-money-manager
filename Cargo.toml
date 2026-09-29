@@ -3,31 +3,53 @@ name = "easy-money-manager"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["rlib", "cdylib"]
+
 [dependencies]
 emm-shared = { git = "https://github.com/Easy-money-manager/emm-shared.git", branch = "main" }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-reqwest = { version = "0.12", features = ["json"] }
 unicode-normalization = "0.1"
 csv = "1"
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+[target.'cfg(target_os = "android")'.dependencies]
+eframe = { version = "0.36.2", default-features = false, features = [ "wgpu", "android-native-activity", "default_fonts", ] }
+reqwest = { version = "0.12", default-features = false, features = [ "json", "rustls-tls" ] }
+tokio = { version = "1", features = ["rt-multi-thread"] }
+winit = { version = "0.30", default-features = false, features = ["android-native-activity"] }
+
+[target.'cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))'.dependencies]
 eframe = { version = "0.36.2" }
 tokio = { version = "1", features = ["rt-multi-thread"] }
+reqwest = { version = "0.12", features = ["json"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-eframe = { version = "0.36.2", default-features = false, features = [
-    "default_fonts",
-    "glow",
-] }
+eframe = { version = "0.36.2", default-features = false, features = [ "default_fonts", "glow", ] }
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["HtmlCanvasElement"] }
 wasm-bindgen = "0.2"
+reqwest = { version = "0.12", features = ["json"] }
 
-#[target.x86_64-pc-windows-gnu]
-#linker = "/usr/bin/x86_64-w64-mingw32-gcc"
+[package.metadata.android]
+package = "com.easymoneymanager.app"
+build_targets = ["aarch64-linux-android"]
+resources = "android-res"
+[[package.metadata.android.uses_permission]]
+name = "android.permission.INTERNET"
+[[package.metadata.android.uses_permission]]
+name = "android.permission.ACCESS_NETWORK_STATE"
+[package.metadata.android.application]
+label = "Easy Money Manager"
+icon = "@mipmap/icon"
+
+[[bin]]
+name = "easy-money-manager"
+path = "src/main.rs"
+required-features = ["desktop"]
 
 [features]
 default = ["client"]
 client = []
+desktop = []

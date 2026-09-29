@@ -67,6 +67,9 @@ pub struct EasyMoneyManager {
     pub(super) sheet_collections: Vec<SheetCollection>,
     pub(super) active_collection: usize,
     pub(super) show_import_popup: bool,
+    pub(super) vertical_display: bool,
+    #[cfg(target_os = "android")]
+    pub(super) show_mobile_sheet_selector: bool,
 
 }
 impl Default for EasyMoneyManager {
@@ -107,6 +110,9 @@ impl Default for EasyMoneyManager {
             quit_after_logout: false,
             show_remove_account_popup: false,
             show_import_popup: false,
+            vertical_display: cfg!(target_os = "android"),
+            #[cfg(target_os = "android")]
+            show_mobile_sheet_selector: true,
         }
     }
 }
@@ -156,7 +162,7 @@ impl EasyMoneyManager {
 impl eframe::App for EasyMoneyManager {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx: egui::Context = ui.ctx().clone();
-        Self::paint_background(ui);
+        self.paint_background(ui);
         match self.auth_state {
             AuthState::LoggedOut   => self.login_ui(ui),
             AuthState::LoggingIn   => self.logging_ui(ui),

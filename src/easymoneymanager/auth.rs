@@ -4,6 +4,8 @@ use crate::api::ApiClient;
 use emm_shared::request::{ RegisterRequest, LoginRequest };
 use emm_shared::response::{ LoginResponse };
 use eframe::egui;
+use std::error::Error;
+use crate::clienttask::ClientTaskError;
 
 #[allow(dead_code)]
 pub(super) struct UserSession {
@@ -239,12 +241,23 @@ impl EasyMoneyManager {
             Ok(Err(error)) => {
                 self.auth_state = AuthState::LoggedOut;
                 self.auth_error = Some("Username or password is incorrect\nPossibly server may be down".to_string());
-                self.log_error(&format!("Login failed: {}", error))
+                self.log_error(&format!("Login failed: {}", error));
+
+                eprintln!("[EMM ERROR]: Login failed: {error:?}");
+
+                let mut source = error.source();
+
+                while let Some(cause) = source {
+                    eprintln!("caused by: {cause}");
+                    source = cause.source();
+                }
             }
             Err(error)     => {
                 self.auth_state = AuthState::LoggedOut;
                 self.auth_error = Some("Login failed due to server issue, sorry!".to_string());
-                self.log_error(&format!("Login task failed: {}", error))
+                self.log_error(&format!("Login task failed: {}", error));
+
+                eprintln!("[EMM ERROR]: Login failed: {error:?}");
             }
         }
     }

@@ -1,13 +1,9 @@
-mod clienttask;
-mod easymoneymanager;
-mod api;
-mod import;
-use easymoneymanager::EasyMoneyManager;
+use easy_money_manager::EasyMoneyManager;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions::default();
 
@@ -17,6 +13,9 @@ fn main() -> eframe::Result {
         Box::new(|cc| Ok(Box::new(EasyMoneyManager::new(cc)))),
     )
 }
+
+#[cfg(target_os = "android")]
+fn main() {}
 
 #[cfg(target_arch = "wasm32")]
 fn main() -> eframe::Result {
