@@ -17,20 +17,6 @@ impl ApiClient {
         let client = reqwest::Client::new();
         #[cfg(target_os = "android")]
         let client = reqwest::Client::builder().resolve( "api.easy-money-manager.com", SocketAddr::new( IpAddr::V4(Ipv4Addr::new(89, 168, 104, 99)), 0,),) .build() .expect("Failed to create reqwest client");
-        #[cfg(target_os = "android")]
-        {
-            use std::net::TcpStream;
-
-            match TcpStream::connect("89.168.104.99:443") {
-                Ok(_) => {
-                    eprintln!("[EMM DEBUG]: Raw TCP connection to API works");
-                }
-
-                Err(error) => {
-                    eprintln!("[EMM DEBUG]: Raw TCP connection failed: {error:?}");
-                }
-            }
-        }
         Self {
             #[cfg(all(debug_assertions, not(target_os = "android")))]
             base_url: "http://127.0.0.1:3000".to_string(),

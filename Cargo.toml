@@ -34,10 +34,14 @@ wasm-bindgen = "0.2"
 [package.metadata.android]
 package = "com.easymoneymanager.app"
 build_targets = ["aarch64-linux-android"]
+resources = "android-res"
 [[package.metadata.android.uses_permission]]
 name = "android.permission.INTERNET"
 [[package.metadata.android.uses_permission]]
 name = "android.permission.ACCESS_NETWORK_STATE"
+[package.metadata.android.application]
+label = "Easy Money Manager"
+icon = "@mipmap/icon"
 
 [[bin]]
 name = "easy-money-manager"

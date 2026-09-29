@@ -239,7 +239,7 @@ impl EasyMoneyManager {
             x += spacing;
         }
     }
-    pub(super) fn paint_background(ui: &mut egui::Ui) {
+    pub(super) fn paint_horizontal_background(ui: &mut egui::Ui) {
         let rect: egui::Rect = ui.max_rect();
         let painter: &egui::Painter = ui.painter();
 
@@ -278,5 +278,56 @@ impl EasyMoneyManager {
 
         Self::paint_grid(&painter, rect);
         Self::paint_streaks(&painter, rect);
+    }
+    pub(super) fn paint_vertical_background(ui: &mut egui::Ui) {
+        let rect: egui::Rect = ui.max_rect();
+        let painter: &egui::Painter = ui.painter();
+
+        painter.rect_filled(
+            rect,
+            0.0,
+            egui::Color32::from_rgb(7, 9, 8),
+        );
+
+        // Soft gold near the top, behind the title / selector area.
+        Self::glow(
+            painter,
+            rect.center_top() + egui::vec2(0.0, 140.0),
+            300.0,
+            egui::Color32::from_rgba_unmultiplied(
+                220, 170, 60, 45,
+            ),
+        );
+
+        // Main green glow through the lower half.
+        Self::glow(
+            painter,
+            rect.center_bottom() + egui::vec2(0.0, -220.0),
+            520.0,
+            egui::Color32::from_rgba_unmultiplied(
+                20, 180, 100, 70,
+            ),
+        );
+
+        // Smaller teal-ish glow near one bottom corner,
+        // just to stop the background feeling too symmetrical.
+        Self::glow(
+            painter,
+            rect.left_bottom() + egui::vec2(120.0, -120.0),
+            280.0,
+            egui::Color32::from_rgba_unmultiplied(
+                0, 120, 90, 45,
+            ),
+        );
+
+        Self::paint_grid(painter, rect);
+        Self::paint_streaks(painter, rect);
+    }
+    pub(super) fn paint_background(&self, ui: &mut egui::Ui) {
+        if self.vertical_display {
+            Self::paint_vertical_background(ui);
+        } else {
+            Self::paint_horizontal_background(ui);
+        }
     }
 }
