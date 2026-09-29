@@ -1,6 +1,8 @@
 use emm_shared::sheetcollection::SheetCollection;
 use emm_shared::request::{ RegisterRequest, LoginRequest, CreateRecordRequest,  UpdateRecordRequest, ImportSheetRequest };
 use emm_shared::response::{ LoginResponse, CreateRecordResponse, BootstrapResponse, ImportSheetResponse };
+#[cfg(target_os = "android")]
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 #[derive(Clone)]
 pub struct ApiClient {
@@ -10,12 +12,27 @@ pub struct ApiClient {
 
 impl ApiClient {
     pub fn new() -> Self {
+        let client = reqwest::Client::builder().resolve( "api.easy-money-manager.com", SocketAddr::new( IpAddr::V4(Ipv4Addr::new(89, 168, 104, 99)), 0,),) .build() .expect("Failed to create reqwest client");
+#[cfg(target_os = "android")]
+        {
+            use std::net::TcpStream;
+
+            match TcpStream::connect("89.168.104.99:443") {
+                Ok(_) => {
+                    eprintln!("[EMM DEBUG]: Raw TCP connection to API works");
+                }
+
+                Err(error) => {
+                    eprintln!("[EMM DEBUG]: Raw TCP connection failed: {error:?}");
+                }
+            }
+        }
         Self {
-            #[cfg(debug_assertions)]
+            #[cfg(all(debug_assertions, not(target_os = "android")))]
             base_url: "http://127.0.0.1:3000".to_string(),
-            #[cfg(not(debug_assertions))]
+            #[cfg(any(not(debug_assertions), target_os = "android"))]
             base_url: "https://api.easy-money-manager.com".to_string(),
-            client: reqwest::Client::new(),
+            client,
         }
     }
     pub async fn register(&self, request: &RegisterRequest) -> Result<(), reqwest::Error> {

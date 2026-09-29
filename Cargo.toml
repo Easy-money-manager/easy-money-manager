@@ -16,7 +16,7 @@ csv = "1"
 
 [target.'cfg(target_os = "android")'.dependencies]
 eframe = { version = "0.36.2", default-features = false, features = [ "wgpu", "android-native-activity", "default_fonts", ] }
-reqwest = { version = "0.12", default-features = false, features = [ "json", "rustls-tls", ] }
+reqwest = { version = "0.12", default-features = false, features = [ "json", "rustls-tls" ] }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 winit = { version = "0.30", default-features = false, features = ["android-native-activity"] }
 
@@ -34,6 +34,10 @@ wasm-bindgen = "0.2"
 [package.metadata.android]
 package = "com.easymoneymanager.app"
 build_targets = ["aarch64-linux-android"]
+[[package.metadata.android.uses_permission]]
+name = "android.permission.INTERNET"
+[[package.metadata.android.uses_permission]]
+name = "android.permission.ACCESS_NETWORK_STATE"
 
 [[bin]]
 name = "easy-money-manager"
