@@ -47,9 +47,8 @@ icon = "@mipmap/icon"
 [[bin]]
 name = "easy-money-manager"
 path = "src/main.rs"
-required-features = ["desktop"]
+required-features = ["client"]
 
 [features]
 default = ["client"]
 client = []
-desktop = []

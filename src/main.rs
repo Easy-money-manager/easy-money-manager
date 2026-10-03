@@ -7,11 +7,7 @@ use wasm_bindgen::JsCast;
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions::default();
 
-    eframe::run_native(
-        "Easy Money Manager",
-        options,
-        Box::new(|cc| Ok(Box::new(EasyMoneyManager::new(cc)))),
-    )
+    eframe::run_native("Easy Money Manager", options, Box::new(|cc| Ok(Box::new(EasyMoneyManager::new(cc)))),)
 }
 
 #[cfg(target_os = "android")]

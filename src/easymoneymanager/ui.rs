@@ -10,9 +10,7 @@ impl EasyMoneyManager {
         if !self.bootstrap_loaded {
             egui::CentralPanel::default().show(ui, |ui| {
                 ui.heading("Waiting for server to bootstrap data");
-                if let Some(error) = &self.error_msg {
-                    ui.label(error);
-                }
+                if let Some(error) = &self.error_msg { ui.label(error); }
             });
             return;
         }
@@ -20,9 +18,7 @@ impl EasyMoneyManager {
         if self.importing_data {
             egui::CentralPanel::default().show(ui, |ui| {
                 ui.heading("Waiting for data to import");
-                if let Some(error) = &self.error_msg {
-                    ui.label(error);
-                }
+                if let Some(error) = &self.error_msg { ui.label(error); }
             });
         }
 
