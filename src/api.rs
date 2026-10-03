@@ -12,17 +12,34 @@ pub struct ApiClient {
 
 impl ApiClient {
     pub fn new() -> Self {
-
-        #[cfg(not(target_os = "android"))]
-        let client = reqwest::Client::new();
         #[cfg(target_os = "android")]
-        let client = reqwest::Client::builder().resolve( "api.easy-money-manager.com", SocketAddr::new( IpAddr::V4(Ipv4Addr::new(89, 168, 104, 99)), 0,),) .build() .expect("Failed to create reqwest client");
+        let client = reqwest::Client::builder().resolve( "api.easy-money-manager.com", SocketAddr::new( IpAddr::V4(Ipv4Addr::new(89, 168, 104, 99)), 0,),).build().expect("Failed to create Android reqwest client");
+
+        #[cfg(all(
+                not(target_os = "android"),
+                not(target_arch = "wasm32")
+        ))]
+            let client = reqwest::Client::new();
+
+        #[cfg(target_arch = "wasm32")]
+        let client = reqwest::Client::new();
+
         Self {
-            #[cfg(all(debug_assertions, not(target_os = "android")))]
-            base_url: "http://127.0.0.1:3000".to_string(),
-            #[cfg(any(not(debug_assertions), target_os = "android"))]
-            base_url: "https://api.easy-money-manager.com".to_string(),
-            client,
+            #[cfg(all(
+                    debug_assertions,
+                    not(target_os = "android"),
+                    not(target_arch = "wasm32")
+            ))]
+                base_url: "http://127.0.0.1:3000".to_string(),
+
+                #[cfg(any(
+                        not(debug_assertions),
+                        target_os = "android",
+                        target_arch = "wasm32"
+                ))]
+                    base_url: "https://api.easy-money-manager.com".to_string(),
+
+                    client,
         }
     }
     pub async fn register(&self, request: &RegisterRequest) -> Result<(), reqwest::Error> {
